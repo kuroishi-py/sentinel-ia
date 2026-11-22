@@ -1,0 +1,23 @@
+[project]
+name = "sentinel-ia"
+version = "0.1.0"
+description = "Deteccion de fraude en tiempo real - EP3 ITY1102, Equipo 7"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q --strict-markers"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/training/sagemaker_deploy.py"]

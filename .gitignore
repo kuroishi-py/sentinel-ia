@@ -1,0 +1,34 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Artefactos del modelo: se regeneran con train.py y pesan.
+# metadata.json y metrics.json SI se versionan: son evidencia del informe.
+artifacts/*
+!artifacts/.gitkeep
+!artifacts/metadata.json
+!artifacts/metrics.json
+
+# Datasets: no se suben al repositorio.
+data/*
+!data/.gitkeep
+!data/README.md
+
+# Reportes de carga
+reports/
+
+# Secretos y configuracion local
+.env
+*.pem
+*.key
+
+# Sistema
+.DS_Store
+.idea/
+.vscode/

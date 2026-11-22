@@ -1,0 +1,92 @@
+# Entorno local completo: API, feature store, bus de eventos y worker.
+#
+# Es la version reducida del despliegue de la EP2 (seccion 7): Redis ocupa el
+# lugar de ElastiCache Valkey y RabbitMQ el de Kinesis. Sirve para desarrollar y
+# para grabar la demostracion sin gastar credito de AWS.
+#
+#   docker compose up -d
+#   docker compose logs -f worker
+#   docker compose down -v
+
+name: sentinel-ia
+
+services:
+  redis:
+    image: redis:7.4-alpine
+    container_name: sentinel-redis
+    command: redis-server --save "" --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: sentinel-rabbitmq
+    ports:
+      - "5672:5672"
+      # Interfaz de administracion en http://localhost:15672 (guest/guest).
+      # Sirve de captura para "comunicacion entre servicios distribuidos".
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: sentinel-api
+    ports:
+      - "8000:8000"
+    environment:
+      SCORER_BACKEND: ${SCORER_BACKEND:-local}
+      MODEL_PATH: /app/artifacts/model.json
+      MODEL_VERSION: ${MODEL_VERSION:-dev-0}
+      SAGEMAKER_ENDPOINT: ${SAGEMAKER_ENDPOINT:-}
+      AWS_REGION: ${AWS_REGION:-sa-east-1}
+      REDIS_URL: redis://redis:6379/0
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+      RATE_LIMIT_RPS: ${RATE_LIMIT_RPS:-200}
+      RATE_LIMIT_BURST: ${RATE_LIMIT_BURST:-400}
+      INTERNAL_BUDGET_MS: ${INTERNAL_BUDGET_MS:-60}
+    volumes:
+      # Solo lectura: la API no debe poder modificar el artefacto que verifico.
+      - ./artifacts:/app/artifacts:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  worker:
+    build: .
+    container_name: sentinel-shap-worker
+    command: ["python", "-m", "src.shap_worker.main"]
+    environment:
+      MODEL_PATH: /app/artifacts/model.json
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+      - ./data:/app/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  dashboard:
+    build: .
+    container_name: sentinel-dashboard
+    command: ["streamlit", "run", "dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    ports:
+      - "8501:8501"
+    environment:
+      API_URL: http://api:8000
+    volumes:
+      - ./dashboard:/app/dashboard:ro
+      - ./artifacts:/app/artifacts:ro
+      - ./data:/app/data:ro
+    depends_on:
+      - api

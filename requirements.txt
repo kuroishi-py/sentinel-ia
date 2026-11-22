@@ -1,0 +1,25 @@
+# Dependencias de ejecucion. Versiones fijas por reproducibilidad (EP2 C3).
+#
+# decision-api
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+gunicorn==23.0.0
+pydantic==2.10.4
+
+# modelo e inferencia
+# numpy no se fija a mano: shap y streamlit acotan el rango y pip resuelve la
+# version compatible. Las versiones exactas quedan en requirements.lock.txt.
+xgboost==2.1.3
+scikit-learn==1.6.0
+pandas==2.2.3
+
+# explicabilidad (shap-worker)
+shap==0.46.0
+
+# feature store y bus de eventos
+redis==5.2.1
+pika==1.3.2
+
+# dashboard
+streamlit==1.41.1
+requests==2.32.3
