@@ -121,6 +121,17 @@ def main() -> None:
     parser.add_argument("--label", default="Class", help="Columna objetivo")
     parser.add_argument("--synthetic", action="store_true", help="Genera datos de prueba")
     parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
+    parser.add_argument(
+        "--drop",
+        nargs="*",
+        default=[],
+        metavar="COLUMNA",
+        help=(
+            "Columnas a excluir. Para el dataset de la ULB conviene --drop Time: "
+            "son segundos desde la primera transaccion y el archivo cubre dos dias, "
+            "asi que el modelo aprenderia el orden de ese archivo, no a detectar fraude."
+        ),
+    )
     parser.add_argument("--model-version", default=None, help="Por omision, la fecha y hora")
     parser.add_argument(
         "--threshold-reject",
@@ -150,7 +161,13 @@ def main() -> None:
     if args.label not in frame.columns:
         raise SystemExit(f"La columna '{args.label}' no esta en el CSV. Columnas: {list(frame.columns)}")
 
-    features = [c for c in frame.columns if c != args.label]
+    missing_drop = [c for c in args.drop if c not in frame.columns]
+    if missing_drop:
+        raise SystemExit(f"--drop menciona columnas que no existen: {missing_drop}")
+
+    features = [c for c in frame.columns if c != args.label and c not in args.drop]
+    if args.drop:
+        logger.info("Excluidas por --drop: %s", ", ".join(args.drop))
     X = frame[features].astype("float32")
     y = frame[args.label].astype(int)
 
