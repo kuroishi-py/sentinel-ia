@@ -168,12 +168,42 @@ class ModelLoader:
         booster.load_model(str(path))
         version = self._read_version(path) or self._settings.model_version
 
+        expected = len(self._settings.feature_names)
+        trained_on = self._trained_features(path)
+        if trained_on is not None and len(trained_on) != expected:
+            # Pasa al entrenar con un dataset publico cuyas columnas no son las
+            # del diseno: el de la ULB trae 30 componentes principales, no las
+            # 11 features con nombre que FeatureAssembler sabe construir.
+            # Mejor decirlo aqui que dejar que XGBoost falle en cada solicitud.
+            logger.error(
+                "El modelo %s espera %d features (%s...) y FeatureAssembler produce %d. "
+                "No se puede servir por /v1/score: o se entrena con las features del "
+                "diseno, o la pasarela envia el vector ya calculado.",
+                version,
+                len(trained_on),
+                ", ".join(trained_on[:4]),
+                expected,
+            )
+            return ConstantScorer(version=version)
+
         scorer = LocalScorer(booster, version, self._settings.feature_names)
         # Warm-up: la primera prediccion de XGBoost es mas lenta que las
         # siguientes, y no queremos que ese costo lo pague una transaccion real.
-        scorer.score([0.0] * len(self._settings.feature_names))
+        scorer.score([0.0] * expected)
         logger.info("Scorer: modelo local %s (%s)", version, path)
         return scorer
+
+    @staticmethod
+    def _trained_features(path: Path) -> list[str] | None:
+        """Features con las que se entrenó el artefacto, según su metadata."""
+        meta = path.with_name("metadata.json")
+        if not meta.exists():
+            return None
+        try:
+            features = json.loads(meta.read_text(encoding="utf-8")).get("features")
+        except (json.JSONDecodeError, OSError):
+            return None
+        return features if isinstance(features, list) else None
 
     def _verify_hash(self, path: Path) -> None:
         """Compara el artefacto con el hash que dejo el entrenamiento."""

@@ -23,3 +23,8 @@ pika==1.3.2
 # dashboard
 streamlit==1.41.1
 requests==2.32.3
+
+# pyarrow se fija a mano: streamlit lo arrastra, y desde la version 18 exige
+# numpy >= 2, que choca con el rango que permite shap. Sin este pin, el
+# dashboard falla al mostrar cualquier tabla.
+pyarrow==17.0.0

@@ -8,6 +8,36 @@ Leyenda: `[x]` hecho · `[~]` el código está, falta ejecutarlo y capturar · `
 
 ---
 
+## Trabajo pendiente
+
+Está como issues, en el milestone
+[EP3 - entrega semana 16](https://github.com/kuroishi-py/sentinel-ia/milestone/1).
+Tómalos de ahí y asígnate el que vayas a hacer, para que no se pisen dos
+personas en lo mismo.
+
+| # | Tarea | Etiquetas |
+|---|---|---|
+| [1](https://github.com/kuroishi-py/sentinel-ia/issues/1) | Decidir el contrato de features: PCA vs las 11 del diseño | `bloqueante` `modelo` |
+| [11](https://github.com/kuroishi-py/sentinel-ia/issues/11) | Confirmar que la pasarela opera en sa-east-1 | `bloqueante` `informe` |
+| [2](https://github.com/kuroishi-py/sentinel-ia/issues/2) | Entrenar con el dataset real y reportar métricas | `modelo` `evidencia` |
+| [3](https://github.com/kuroishi-py/sentinel-ia/issues/3) | Desplegar el endpoint Serverless de SageMaker | `despliegue` `evidencia` |
+| [4](https://github.com/kuroishi-py/sentinel-ia/issues/4) | Comparar p99: modelo en memoria vs endpoint | `testing` `informe` |
+| [5](https://github.com/kuroishi-py/sentinel-ia/issues/5) | Tramo asíncrono con RabbitMQ y su evidencia | `despliegue` `evidencia` |
+| [6](https://github.com/kuroishi-py/sentinel-ia/issues/6) | Carga a 116 tx/s con p50, p95 y p99 | `testing` `evidencia` |
+| [7](https://github.com/kuroishi-py/sentinel-ia/issues/7) | Capturar logs y métricas de CloudWatch | `despliegue` `evidencia` |
+| [8](https://github.com/kuroishi-py/sentinel-ia/issues/8) | Dashboard con URL funcional | `despliegue` `evidencia` |
+| [9](https://github.com/kuroishi-py/sentinel-ia/issues/9) | Seguridad desplegada: TLS y autenticación | `despliegue` |
+| [10](https://github.com/kuroishi-py/sentinel-ia/issues/10) | Informe técnico de 10 páginas | `informe` |
+| [12](https://github.com/kuroishi-py/sentinel-ia/issues/12) | Revisar retroalimentación del docente de la EP2 | `informe` `equipo` |
+| [13](https://github.com/kuroishi-py/sentinel-ia/issues/13) | Agregar al equipo como colaboradores | `equipo` |
+
+Los dos `bloqueante` van primero: el 1 porque de él dependen el entrenamiento,
+el endpoint y la parte de interpretabilidad del informe; el 11 porque si la
+pasarela no está en sa-east-1, el presupuesto de latencia del diseño cambia y
+hay decisiones que revisar.
+
+---
+
 ## 1. Sistema desplegado y funcional
 
 ### 1.1 Implementación y despliegue del modelo · IE1, IE2
