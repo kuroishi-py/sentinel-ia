@@ -21,6 +21,7 @@ artifacts/*
 !artifacts/metadata.json
 !artifacts/metrics.json
 !artifacts/merchant_risk.json
+!artifacts/sagemaker_parity.json
 !artifacts/benchmark_ulb/
 artifacts/benchmark_ulb/*
 !artifacts/benchmark_ulb/metadata.json

@@ -1,0 +1,70 @@
+# Sobrecarga para una instancia EC2 de AWS.
+#
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.aws.yml up -d --build
+#
+# Sobre el entorno local agrega tres cosas:
+# - el borde en los puertos 80 y 443 con certificados publicos (Caddyfile.aws);
+# - los logs de cada contenedor en CloudWatch Logs, grupos /sentinel-ia/<servicio>
+#   (pauta 1.2: "Evidencias: logs, metricas CloudWatch");
+# - la API confia en X-Forwarded-For porque delante esta Caddy, y puede usar el
+#   endpoint de SageMaker con SCORER_BACKEND=sagemaker.
+#
+# La instancia necesita un rol con permisos de CloudWatch Logs y
+# sagemaker:InvokeEndpoint (en AWS Academy, LabInstanceProfile) y el limite de
+# saltos de metadatos en 2, para que los contenedores lleguen a sus
+# credenciales. docs/DESPLIEGUE_AWS.md lo explica.
+
+services:
+  api:
+    environment:
+      TRUST_PROXY_HEADERS: "true"
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      MODEL_VERSION: ${MODEL_VERSION:-v1.0.0-sim}
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-create-group: "true"
+        awslogs-group: /sentinel-ia/api
+
+  worker:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-create-group: "true"
+        awslogs-group: /sentinel-ia/shap-worker
+
+  dashboard:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-create-group: "true"
+        awslogs-group: /sentinel-ia/dashboard
+
+  rabbitmq:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-create-group: "true"
+        awslogs-group: /sentinel-ia/rabbitmq
+
+  proxy:
+    ports: !override
+      - "80:80"
+      - "443:443"
+    environment:
+      API_HOST: ${API_HOST:?Define API_HOST en .env, por ejemplo api.54-232-10-20.sslip.io}
+      DASHBOARD_HOST: ${DASHBOARD_HOST:?Define DASHBOARD_HOST en .env}
+      DASHBOARD_USER: ${DASHBOARD_USER:-fraudops}
+      DASHBOARD_PASSWORD_HASH: ${DASHBOARD_PASSWORD_HASH:?Define DASHBOARD_PASSWORD_HASH en .env}
+    volumes:
+      - ./deploy/Caddyfile.aws:/etc/caddy/Caddyfile:ro
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-create-group: "true"
+        awslogs-group: /sentinel-ia/proxy

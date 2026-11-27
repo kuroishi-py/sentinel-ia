@@ -1,0 +1,108 @@
+{
+  "model_version": "v1.0.0-sim",
+  "feature_names": [
+    "amount_log",
+    "amount_vs_user_avg",
+    "tx_count_1h",
+    "tx_count_24h",
+    "amount_sum_24h",
+    "distinct_merchants_24h",
+    "user_age_days",
+    "merchant_risk",
+    "is_foreign_country",
+    "hour_of_day",
+    "is_new_device"
+  ],
+  "casos": [
+    {
+      "escenario": "compra_normal",
+      "features": {
+        "amount_log": 9.851720461714246,
+        "amount_vs_user_avg": 1.1008695652173912,
+        "tx_count_1h": 0.0,
+        "tx_count_24h": 0.0,
+        "amount_sum_24h": 0.0,
+        "distinct_merchants_24h": 0.0,
+        "user_age_days": 30.0,
+        "merchant_risk": 0.002072,
+        "is_foreign_country": 0.0,
+        "hour_of_day": 15.0,
+        "is_new_device": 0.0
+      },
+      "vector": [
+        9.851720461714246,
+        1.1008695652173912,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.002072,
+        0.0,
+        15.0,
+        0.0
+      ],
+      "score_api": 1e-06
+    },
+    {
+      "escenario": "toma_de_cuenta",
+      "features": {
+        "amount_log": 12.873904582205107,
+        "amount_vs_user_avg": 6.24332977588047,
+        "tx_count_1h": 3.0,
+        "tx_count_24h": 3.0,
+        "amount_sum_24h": 730000.0,
+        "distinct_merchants_24h": 1.0,
+        "user_age_days": 30.0,
+        "merchant_risk": 0.096006,
+        "is_foreign_country": 1.0,
+        "hour_of_day": 15.0,
+        "is_new_device": 1.0
+      },
+      "vector": [
+        12.873904582205107,
+        6.24332977588047,
+        3.0,
+        3.0,
+        730000.0,
+        1.0,
+        30.0,
+        0.096006,
+        1.0,
+        15.0,
+        1.0
+      ],
+      "score_api": 1.0
+    },
+    {
+      "escenario": "prueba_de_tarjeta",
+      "features": {
+        "amount_log": 12.429220196836383,
+        "amount_vs_user_avg": 23.7223803714247,
+        "tx_count_1h": 9.0,
+        "tx_count_24h": 9.0,
+        "amount_sum_24h": 14310.0,
+        "distinct_merchants_24h": 9.0,
+        "user_age_days": 30.0,
+        "merchant_risk": 0.000411,
+        "is_foreign_country": 0.0,
+        "hour_of_day": 15.0,
+        "is_new_device": 1.0
+      },
+      "vector": [
+        12.429220196836383,
+        23.7223803714247,
+        9.0,
+        9.0,
+        14310.0,
+        9.0,
+        30.0,
+        0.000411,
+        0.0,
+        15.0,
+        1.0
+      ],
+      "score_api": 0.998564
+    }
+  ]
+}

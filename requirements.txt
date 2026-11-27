@@ -20,6 +20,10 @@ shap==0.46.0
 redis==5.2.1
 pika==1.3.2
 
+# backend sagemaker de decision-api (invoke_endpoint). Sin esto, la imagen no
+# puede usar SCORER_BACKEND=sagemaker.
+boto3==1.35.90
+
 # dashboard
 streamlit==1.41.1
 requests==2.32.3

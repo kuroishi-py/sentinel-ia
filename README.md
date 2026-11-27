@@ -236,7 +236,9 @@ Todo por variables de entorno; ningún secreto en el código ni en la imagen
 
 ## Fuera de alcance de este repositorio
 
-El despliegue en AWS (endpoint de SageMaker, CloudWatch, URL pública) no está
-ejecutado. Lo que falta y cómo hacerlo está en
-[docs/EVIDENCIAS.md](docs/EVIDENCIAS.md). **Si lo despliegan, borren el
+El despliegue en AWS (endpoint de SageMaker, CloudWatch, URL pública) se hace
+desde AWS CloudShell con [docs/DESPLIEGUE_AWS.md](docs/DESPLIEGUE_AWS.md):
+`src/training/sagemaker_deploy.py` publica el modelo versionado en un endpoint
+serverless y `deploy/aws_ec2.sh` levanta este mismo `docker compose` en EC2 con
+certificado público y logs en CloudWatch. **Si lo despliegan, borren el
 endpoint al terminar:** uno olvidado consume crédito todos los días.

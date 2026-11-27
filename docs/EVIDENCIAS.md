@@ -40,8 +40,9 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
   - `POST /v1/score`, por TLS en `https://localhost:8443`.
   - Captura: [01_swagger.png](evidencias/01_swagger.png).
 - `[aws]` **Despliegue en cloud**
-  - `src/training/sagemaker_deploy.py` sigue listo, pero no se ejecutó.
-  - Ojo: hoy entrenaría el modelo de la ULB, no el de servicio.
+  - `src/training/sagemaker_deploy.py` publica el modelo de servicio
+    versionado (sin training job) y compara el score del endpoint con el de la
+    API ([DESPLIEGUE_AWS.md](DESPLIEGUE_AWS.md)). Falta ejecutarlo.
 
 ### 1.2 Plataforma AIaaS e infraestructura · IE4, IE5
 
@@ -209,6 +210,11 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
 | [13](https://github.com/kuroishi-py/sentinel-ia/issues/13) | Colaboradores | `[ ]` |
 
 ### Nota para el issue #3 (SageMaker), revisada el 27-11-2026 sin ejecutar nada en AWS
+
+**Actualización:** el camino corto de esta nota quedó implementado en
+`sagemaker_deploy.py` (modelo versionado, `inference.py` como handler y
+comparación con la API), junto con el despliegue en EC2. Pasos en
+[DESPLIEGUE_AWS.md](DESPLIEGUE_AWS.md). Lo que sigue es el diagnóstico original.
 
 `sagemaker_deploy.py` tal como está no va a funcionar de punta a punta:
 

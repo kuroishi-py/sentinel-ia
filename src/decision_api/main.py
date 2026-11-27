@@ -28,6 +28,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request, Response, Security, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.security import APIKeyHeader
+from starlette.concurrency import run_in_threadpool
 
 from .config import get_settings
 from .features import FeatureAssembler, MemoryFeatureState, MerchantRisk, RedisFeatureState
@@ -297,7 +298,12 @@ async def score(
 
     degraded = feature_set.degraded
     try:
-        raw_score = state.scorer.score(vector)
+        if getattr(state.scorer, "blocking_io", False):
+            # Backend remoto (SageMaker): la llamada de red va a un hilo para no
+            # bloquear al resto de las solicitudes que atiende este proceso.
+            raw_score = await run_in_threadpool(state.scorer.score, vector)
+        else:
+            raw_score = state.scorer.score(vector)
     except Exception as exc:  # noqa: BLE001 - el pago no se cae por el modelo
         logger.error("Fallo el scoring de %s: %s", request.id_tx, exc)
         raw_score = 0.5
