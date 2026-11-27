@@ -356,8 +356,16 @@ def render_model() -> None:
             "Recall (0,80)": base.get("recall"),
             "FP sobre legitimas (0,80)": base.get("false_positive_rate_on_legit"),
         }
-    st.dataframe(pd.DataFrame(table).style.format(precision=4, na_rep="—"), use_container_width=True)
-    st.caption("Accuracy se muestra solo para dejar claro por que no sirve: con 0,5% de fraude, aprobar todo da 99,5%.")
+    # Texto ya formateado: Streamlit no respeta el na_rep de un Styler y
+    # mostraria "None" en las metricas que el motor de reglas no tiene.
+    shown = pd.DataFrame(table).apply(lambda col: col.map(lambda v: "—" if pd.isna(v) else f"{v:.4f}"))
+    st.dataframe(shown, use_container_width=True)
+    rows, frauds = served.get("test_rows"), served.get("test_frauds")
+    if rows and frauds:
+        st.caption(
+            f"Accuracy se muestra solo para dejar claro por que no sirve: la prueba tiene {frauds} fraudes en "
+            f"{rows:,} transacciones ({frauds / rows:.2%}), asi que aprobar todo daria {1 - frauds / rows:.2%}."
+        )
 
     g1, g2 = st.columns(2)
     with g1:

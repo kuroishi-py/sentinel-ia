@@ -18,6 +18,16 @@ name: sentinel-ia
 
 x-api-key: &api-key ${SENTINEL_API_KEY:-sentinel-demo-local}
 
+# Raiz de solo lectura para los contenedores propios (EP2 7.1 y RT5): si algo
+# logra ejecutar codigo dentro, no puede modificar la imagen. Lo unico que se
+# escribe va a /tmp (memoria) o a los volumenes declarados.
+x-hardening: &hardening
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+
 services:
   redis:
     image: redis:7.4-alpine
@@ -49,6 +59,7 @@ services:
     build: .
     image: sentinel-ia:local
     container_name: sentinel-api
+    <<: *hardening
     ports:
       # Solo para desarrollo y Swagger sin TLS. El camino de pagos es el proxy.
       - "127.0.0.1:8000:8000"
@@ -82,6 +93,7 @@ services:
   worker:
     image: sentinel-ia:local
     container_name: sentinel-shap-worker
+    <<: *hardening
     command: ["python", "-m", "src.shap_worker.main"]
     # En Linux, la carpeta data/ es del usuario de la maquina: SENTINEL_UID=$(id -u)
     # deja que el worker escriba los casos ahi. En Docker Desktop no hace falta.
@@ -89,6 +101,11 @@ services:
     environment:
       MODEL_PATH: /app/artifacts/model.json
       AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+      # shap y sus dependencias escriben caches en el HOME; con la raiz de
+      # solo lectura, el HOME va a /tmp.
+      HOME: /tmp
+      NUMBA_CACHE_DIR: /tmp
+      MPLCONFIGDIR: /tmp
     volumes:
       - ./artifacts:/app/artifacts:ro
       - ./data:/app/data
@@ -104,12 +121,15 @@ services:
   dashboard:
     image: sentinel-ia:local
     container_name: sentinel-dashboard
-    command: ["streamlit", "run", "dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--browser.gatherUsageStats=false"]
+    <<: *hardening
+    # toolbarMode=viewer: la consola es para analistas, sin menu de desarrollo.
+    command: ["streamlit", "run", "dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true", "--browser.gatherUsageStats=false", "--client.toolbarMode=viewer"]
     ports:
       - "127.0.0.1:8501:8501"
     environment:
       API_URL: http://api:8000
       SENTINEL_API_KEY: *api-key
+      HOME: /tmp
     volumes:
       - ./dashboard:/app/dashboard:ro
       - ./artifacts:/app/artifacts:ro

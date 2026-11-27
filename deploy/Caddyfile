@@ -29,6 +29,19 @@ https://localhost:8443 {
 
 	reverse_proxy api:8000
 
+	# Log de acceso en JSON (metodo, ruta, estado, duracion, version TLS):
+	# la evidencia de trafico del borde que en AWS daria el ALB. La API key
+	# se borra antes de escribir: un secreto no va a los logs (EP2 8.3).
+	log {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				request>headers>X-Api-Key delete
+			}
+		}
+	}
+
 	header {
 		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options "nosniff"

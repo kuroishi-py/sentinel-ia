@@ -1,14 +1,15 @@
 # Dockerfile de decision-api.
 #
-# Sigue el Anexo A de la EP2: multi-etapa, usuario no root, raiz de solo
-# lectura y dependencias instaladas desde un requirements fijo.
+# Sigue el Anexo A de la EP2: multi-etapa, usuario no root y dependencias
+# instaladas desde un requirements fijo. La raiz de solo lectura la aplica el
+# orquestador (read_only en docker-compose.yml, readonlyRootFilesystem en ECS).
 #
-# El modelo NO va dentro de la imagen: se descarga al iniciar segun la version
-# aprobada (EP2 D10). Asi cambiar de modelo no obliga a reconstruir ni a
-# redesplegar la imagen.
+# El modelo NO va dentro de la imagen: se monta (local) o se descarga al
+# iniciar segun la version aprobada (EP2 D10). Asi cambiar de modelo no obliga
+# a reconstruir ni a redesplegar la imagen.
 #
 # Para ECS Fargate en ARM64 (Graviton, ~20% mas barato segun EP2 seccion 7.4):
-#   docker buildx build --platform linux/arm64 -t sentinel-ia/decision-api:0.1.0 .
+#   docker buildx build --platform linux/arm64 -t sentinel-ia/decision-api:1.0.0 .
 
 # --- etapa de construccion -------------------------------------------------
 FROM python:3.12-slim AS builder
@@ -34,7 +35,7 @@ FROM python:3.12-slim
 
 LABEL org.opencontainers.image.title="SENTINEL-IA decision-api" \
       org.opencontainers.image.description="Scoring de fraude en tiempo real" \
-      org.opencontainers.image.version="0.1.0"
+      org.opencontainers.image.version="1.0.0"
 
 # OMP_NUM_THREADS=1: un hilo de OpenMP por proceso. La concurrencia la dan
 # los workers de gunicorn; sin esto, cada prediccion de XGBoost abre un hilo
@@ -71,4 +72,5 @@ CMD ["gunicorn", "src.decision_api.main:app", \
      "--workers", "2", \
      "--bind", "0.0.0.0:8000", \
      "--timeout", "30", \
+     "--worker-tmp-dir", "/tmp", \
      "--access-logfile", "-"]
