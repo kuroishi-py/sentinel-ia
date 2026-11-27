@@ -131,19 +131,39 @@ RabbitMQ y 0 descartados. El 99,4% de las decisiones fueron aprobaciones.
 **Objetivos de la EP2 (RNF1):** p99 en la pasarela < 100 ms: **cumple** (4,5
 ms). p99 interno < 30 ms: **cumple** (3,6 ms). Errores < 1%: **cumple** (0%).
 
-**Por qué Locust mide 44 ms y k6 1,8 ms.** No es el servicio:
-- El middleware del servidor mide 1,6 ms por solicitud en la misma corrida.
-- Una sonda independiente, en paralelo con la carga de Locust, midió 3,9 ms.
-- Locust con un solo usuario mide 3 ms.
-- Con 116 conexiones casi ociosas (1 solicitud por segundo cada una), el
-  cliente de Locust en Python/gevent suma unos 40 ms por solicitud en esta VM.
-  Con `FastHttpUser`, que es lo que la documentación de Locust recomienda para
-  medir rendimiento, el efecto se reduce pero no desaparece.
-- En el perfil de saturación, con más solicitudes por conexión, Locust mide 2 ms
-  de mediana.
+**Por qué Locust mide 44 ms y k6 1,8 ms.** No es el servicio. Tres clientes
+independientes coinciden en 2 a 5 ms, y solo Locust se aparta:
 
-Se reporta Locust porque la pauta lo nombra, y k6 porque mide lo que vería la
-pasarela.
+| Cliente, contra la misma tarea | p50 | p99 |
+|---|---|---|
+| Middleware del servidor (solicitud completa) | 1,6 ms | 3,6 ms |
+| k6, 116 tx/s de llegada constante | 1,8 ms | 4,5 ms |
+| Sonda propia: 116 conexiones TCP, 1 req/s cada una (`load/sonda_conexiones.py`) | 1,8 ms | 5,3 ms |
+| Locust con 1 usuario | 3 ms | — |
+| Locust con 116 usuarios (1 req/s cada uno) | 44 ms | 120 ms |
+
+La sonda reproduce el mismo patrón de conexiones que Locust y da 1,8 ms, así
+que el servidor no se degrada con muchas conexiones ociosas: el sobrecosto es
+del cliente de Locust (Python sobre gevent) en esta VM. Locust se reporta porque
+la pauta lo nombra; k6 y la sonda, porque miden lo que vería la pasarela
+([sonda_conexiones.txt](evidencias/sonda_conexiones.txt)).
+
+**Un hallazgo para el contrato con la pasarela.** Un cliente que envía
+cabeceras y cuerpo del POST en dos escrituras **sin `TCP_NODELAY`** suma 40 ms
+fijos por solicitud:
+
+| Mismo POST, misma conexión | p50 |
+|---|---|
+| Una escritura | 3,0 ms |
+| Dos escrituras, con `TCP_NODELAY` | 3,4 ms |
+| Dos escrituras, sin `TCP_NODELAY` | **44,7 ms** |
+
+Es el algoritmo de Nagle del cliente, que espera el ACK que Linux retarda 40
+ms. El log del borde registra justo esos ~45 ms para un cliente Python desde
+Windows. El servidor ya usa `TCP_NODELAY` (verificado en uvicorn/uvloop). La
+pasarela debe usar un cliente HTTP con `TCP_NODELAY`, como hacen por omisión Go,
+Netty y OkHttp. Si no, el 40% del presupuesto de 100 ms se pierde antes de
+llegar al servicio.
 
 ### 2.2 Capacidad de una tarea de 1 vCPU (`docker update --cpus 1`)
 
@@ -161,7 +181,25 @@ validar en prueba de carga".
 **Una tarea de 1 vCPU sostiene unas 375 solicitudes/s con p99 < 30 ms: tres
 veces el supuesto de la EP2.** Con el objetivo de 40 solicitudes/s por tarea, el
 mínimo de 3 tareas (una por zona) tiene un margen de 9 veces sobre el pico de
-116 tx/s. Ver las oportunidades de optimización (sección 4).
+116 tx/s.
+
+**Y una de 0,5 vCPU** (`docker update --cpus 0.5`), que es lo que propone la
+sección 4:
+
+| Tasa (k6, 60 s) | Qué representa | p50 | p99 | Errores |
+|---|---|---|---|---|
+| 39 tx/s | El pico repartido en 3 zonas | 2,35 ms | **22,5 ms** | 0% |
+| 58 tx/s | El pico con una zona caída (2 tareas) | 2,18 ms | **24,2 ms** | 0% |
+| 116 tx/s | Todo el pico en una sola tarea | 1,87 ms | 39,9 ms | 0% |
+| 200 tx/s | — | 1,59 ms | 60,8 ms | 0% |
+
+Con media CPU, la latencia de cola sube incluso con poca carga (22 ms de p99 a
+39 tx/s): es el *throttling* de CPU del contenedor. Aun así, en los dos
+escenarios del diseño (normal y con una zona caída) se cumple el p99 interno de
+30 ms, con un margen de ~20%.
+
+**Memoria medida:** 229 MB de RSS por worker y 284 MiB la tarea completa bajo
+carga. La EP2 supuso 0,45 GB por proceso, así que una tarea de 1 GB alcanza.
 
 ### 2.3 Rate limiting bajo carga
 
@@ -183,7 +221,7 @@ borde va en el ALB o en WAF.
 
 ---
 
-## 3. Lo que encontraron las pruebas de carga, y cómo se resolvió
+## 3. Lo que encontraron las pruebas, y cómo se resolvió
 
 | Hallazgo | Síntoma | Causa | Corrección |
 |---|---|---|---|
@@ -193,21 +231,32 @@ borde va en el ALB o en WAF.
 | 51% de revisiones y rechazos en la carga | Tráfico irreal: cada solicitud traía un usuario y un dispositivo nunca vistos | El generador no tenía historia | `src/demo/seed.py` precarga 20.000 perfiles; la carga usa usuarios con historia (2% de dispositivos nuevos, 2% extranjero). Mezcla resultante: 99,4% aprobadas |
 | 422 espurios | 68 de 150.000 solicitudes | `id_tx` hexadecimales aleatorios con 13 o más dígitos seguidos que pasan Luhn | Los generadores usan base32. **Riesgo vigente:** un `id_tx` numérico de 13 a 19 dígitos tiene ~10% de probabilidad de rechazarse. El contrato con la pasarela debe fijar identificadores no numéricos |
 | Dashboard caído en Docker | Llamaba a `localhost:8000` dentro del contenedor | Ignoraba `API_URL` | Lee `API_URL` y `SENTINEL_API_KEY` |
+| API key en los logs del borde | El log de acceso de Caddy guardaba la cabecera `X-Api-Key` en claro | El formato JSON registra todas las cabeceras | Filtro `request>headers>X-Api-Key delete` en el Caddyfile; verificado sin apariciones de la clave ([logs_servicios.txt](evidencias/logs_servicios.txt)) |
 | Features de velocidad sin efecto | Perfil y dispositivos nunca se escribían; `tx_count_1h` duraba 24 h | El esqueleto incrementaba contadores sin ventanas | Ventanas reales con ZSET, perfil y dispositivos en Redis, en una sola pipeline. CP-20 compara Redis contra memoria |
 
 ---
 
 ## 4. Oportunidades de optimización
 
-1. **Menos tareas de decision-api.** La capacidad medida (375 req/s por vCPU
-   con p99 < 30 ms) permite subir el objetivo de 40 a ~120 solicitudes/s por
-   tarea, y la regla de escalado con él. Las 3 tareas mínimas siguen por
-   disponibilidad (una por zona), pero el máximo de 12 sobra: con 4 se cubren
-   1.000 tx/s. En la estimación de la EP2 (USD 173,59 por 3,5 tareas) eso evita
-   pagar escalado que nunca se usa.
-2. **Tareas de 0,5 vCPU.** Si una de 1 vCPU sostiene 375 req/s, una de 0,5 vCPU
-   sostiene el pico de una zona (39 req/s) con mucho margen. Hay que medirlo con
-   el mismo método antes de decidir.
+1. **Dimensionar decision-api con la capacidad medida.** Costo según el Anexo F
+   (AWS Pricing Calculator, São Paulo, ARM): una tarea de 1 vCPU y 2 GB cuesta
+   USD 49,60 al mes (173,59 / 3,5), y una de 0,5 vCPU y 1 GB, USD 24,80. Esta
+   última es la tarifa que el mismo anexo usa para case-service y shap-worker.
+
+   | Opción | Tareas | USD/mes | Ahorro/mes | Respaldo |
+   |---|---|---|---|---|
+   | EP2: 1 vCPU/2 GB, 3,5 en promedio | 3,5 | 173,59 | — | Supuesto de 120 req/s por tarea |
+   | 1 vCPU/2 GB, sin escalar sobre el mínimo | 3 | 148,79 | 24,80 | Medido: 375 req/s por tarea; el pico nunca obliga a escalar |
+   | **0,5 vCPU/1 GB, 3 tareas** | 3 | **74,40** | **99,19 (57%)** | Medido: p99 de 22,5 ms normal y 24,2 ms con una zona caída; 284 MiB de memoria |
+
+   La tercera opción ahorra USD 1.190 al año, el 5% de la estimación total de
+   la EP2 (USD 23.784). Antes de adoptarla hay que repetir la medición en
+   Fargate ARM: el margen frente a los 30 ms es de ~20%, y la CPU de Docker
+   Desktop no es la de Graviton.
+2. **Ajustar la regla de escalado.** El objetivo de 40 solicitudes/s por tarea
+   es tres veces más conservador que lo medido. Subirlo a ~120 (1 vCPU) o ~40
+   (0,5 vCPU), y bajar el máximo de 12 tareas, evita pagar escalado que nunca se
+   usa.
 3. **Rate limiting compartido.** El token bucket es por proceso. Si se quiere un
    límite exacto por cliente en toda la flota, debe vivir en Redis o en el borde
    (WAF).
@@ -233,9 +282,12 @@ docker compose --profile carga run --rm k6                       # 116 tx/s, 3 m
 PERFIL=pico docker compose --profile carga run --rm locust       # la pauta pide Locust o JMeter
 PERFIL=capacidad DURACION=1m docker compose --profile carga run --rm locust
 
-# capacidad de una tarea de 1 vCPU
+# capacidad de una tarea de 1 vCPU (o 0.5)
 RATE_LIMIT_RPS=100000 RATE_LIMIT_BURST=100000 docker compose up -d api
 docker update --cpus 1 sentinel-api
 TASA=375 DURACION=60s docker compose --profile carga run --rm k6
 docker compose up -d --force-recreate api                        # vuelve a la normalidad
+
+# latencia sin el cliente de Locust: 116 conexiones, 1 req/s cada una
+docker compose exec -T dashboard python - < load/sonda_conexiones.py
 ```

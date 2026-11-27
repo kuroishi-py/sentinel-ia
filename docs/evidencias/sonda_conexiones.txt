@@ -1,0 +1,4 @@
+# Sonda con 116 conexiones persistentes (load/sonda_conexiones.py) - 2026-11-27T01:50Z
+# Separa la latencia del servicio de la del generador de carga. Ver RESULTADOS.md 2.1.
+116 conexiones, 1 req/s c/u (una escritura, TCP_NODELAY): n=2900 p50 1.8 ms  p95 3.4 ms  p99 5.3 ms
+20 conexiones, 1 req/s c/u (cabeceras y cuerpo separados, sin TCP_NODELAY): n=300 p50 44.7 ms  p95 48.5 ms  p99 50.9 ms

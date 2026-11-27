@@ -18,8 +18,9 @@ sección de ese documento que lo justifica.
 | Capacidad supuesta: 120 req/s por tarea de 1 vCPU | **375 req/s** con p99 < 30 ms |
 | Menos falsos positivos que el motor de reglas | 63 alertas falsas contra 6.396 del motor, en los mismos datos |
 
-Todo en [docs/RESULTADOS.md](docs/RESULTADOS.md); el mapa pauta → evidencia, en
-[docs/EVIDENCIAS.md](docs/EVIDENCIAS.md).
+Todo en [docs/RESULTADOS.md](docs/RESULTADOS.md). El mapa pauta → evidencia
+está en [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md), y la autoevaluación por
+criterio, en [docs/RUBRICA.md](docs/RUBRICA.md).
 
 ---
 
@@ -65,6 +66,10 @@ Enlaces directos: `?vista=probar&escenario=ato`, `?vista=modelo` y
 
 En Linux, para que el worker escriba en `data/`: `SENTINEL_UID=$(id -u) docker compose up -d`.
 
+Si cambias `dashboard/app.py` con Docker Desktop en Windows, reinicia el
+contenedor (`docker compose restart dashboard`): el montaje no avisa los
+cambios y Streamlit sigue con la versión anterior.
+
 ### Solo la API, sin Docker
 
 ```bash
@@ -94,6 +99,17 @@ SENTINEL_E2E_URL=https://localhost:8443 pytest -m e2e -v
 python scripts/verificar_seguridad.py   # TLS 1.3, API key, endpoints ocultos, HSTS
 ```
 
+### Informe en PDF
+
+```bash
+python scripts/generar_informe.py       # docs/informe/EP3_Equipo7_...pdf, 10 paginas
+```
+
+Convierte `docs/informe/EP3_informe_tecnico.md` con Chrome o Edge headless, e
+informa cuántas páginas tiene y cuántos `[COMPLETAR]` quedan. Los nombres del
+equipo van en `docs/informe/portada.local.json`, que no se versiona (ver el
+docstring del script).
+
 Son 24 casos (CP-01 a CP-23, más CP-20b) en 101 funciones; la tabla está en
 [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md#23-testing-y-calidad--ie10). Si hay un
 Redis en `REDIS_URL`, CP-20 compara además el feature store en Redis contra el
@@ -106,6 +122,7 @@ imagen.
 ```bash
 docker compose exec api python -m src.demo.seed --users 20000      # usuarios con historia
 docker compose --profile carga run --rm k6                          # 116 tx/s, 3 min
+docker compose exec -T dashboard python - < load/sonda_conexiones.py  # sin el cliente de Locust
 PERFIL=pico docker compose --profile carga run --rm locust          # lo mismo con Locust
 PERFIL=capacidad DURACION=1m docker compose --profile carga run --rm locust
 ```
@@ -163,9 +180,9 @@ src/demo/              Escenarios de demostracion y precarga para la prueba de c
 dashboard/             Consola de Fraud Ops (Streamlit)
 deploy/Caddyfile       Borde TLS 1.3 (el papel del ALB en la EP2)
 load/                  Locust y k6
-scripts/               Verificacion de seguridad del borde
+scripts/               Verificacion de seguridad del borde y generador del informe en PDF
 tests/                 24 casos de prueba, 101 funciones
-docs/                  RESULTADOS, EVIDENCIAS, capturas y borrador del informe
+docs/                  RESULTADOS, EVIDENCIAS, RUBRICA, diagramas PlantUML, capturas e informe
 ```
 
 ---

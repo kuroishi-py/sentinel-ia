@@ -1,0 +1,54 @@
+@startuml ep3_despliegue_local
+' Despliegue de la EP3 con docker compose. Las equivalencias con AWS estan en
+' la tabla de la seccion 1 del informe y en la EP2 (seccion 7).
+' Render: docker run --rm -v "$PWD/docs/diagramas:/w" plantuml/plantuml -tpng /w/ep3_despliegue_local.puml
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam rectangle {
+  BorderColor #333333
+  BackgroundColor #FFFFFF
+}
+skinparam node {
+  BorderColor #333333
+  BackgroundColor #F4F6F7
+}
+skinparam database {
+  BorderColor #333333
+  BackgroundColor #FFFFFF
+}
+skinparam queue {
+  BorderColor #333333
+  BackgroundColor #FFFFFF
+}
+left to right direction
+title Despliegue local de SENTINEL-IA (docker compose)
+
+actor "Pasarela" as GW
+actor "Analista" as AN
+
+node "Red interna de Docker" {
+  rectangle "proxy\nCaddy, TLS 1.3" as EDGE
+  rectangle "api\ndecision-api\n(2 workers)" as API
+  database "redis\nfeature store" as R
+  queue "rabbitmq\ndecision.v1" as MQ
+  rectangle "worker\nshap-worker" as W
+  rectangle "dashboard\nStreamlit" as UI
+}
+folder "artifacts\n(modelo, solo lectura)" as ART
+folder "data\n(casos)" as DATA
+
+GW --> EDGE : HTTPS + API key
+AN --> EDGE : HTTPS
+EDGE --> API : HTTP
+EDGE --> UI : HTTP
+API --> R : 1 pipeline
+API --> MQ : AMQP
+MQ --> W : AMQP
+W --> DATA : casos
+UI --> DATA
+UI --> API : stats
+API ..> ART
+W ..> ART
+@enduml

@@ -14,3 +14,6 @@ sagemaker==2.237.3
 
 # calidad de codigo
 ruff==0.8.6
+
+# informe en PDF (scripts/generar_informe.py; websockets ya viene con uvicorn[standard])
+markdown==3.7

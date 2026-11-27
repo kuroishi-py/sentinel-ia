@@ -1,15 +1,16 @@
 # Mapa de evidencias · EP3 ITY1102
 
 Cada punto de la pauta, qué lo cubre en este repositorio y dónde está la
-evidencia. Los números están en [RESULTADOS.md](RESULTADOS.md) y los archivos
-crudos en [evidencias/](evidencias/).
+evidencia. Los números están en [RESULTADOS.md](RESULTADOS.md); los archivos
+crudos, en [evidencias/](evidencias/); y la autoevaluación criterio por
+criterio, en [RUBRICA.md](RUBRICA.md).
 
 Leyenda: `[x]` hecho y verificado en local · `[aws]` falta la parte que se
 despliega en AWS · `[ ]` pendiente del equipo
 
-Estado al 27-11-2026: **todo lo que corre en local está hecho y verificado.**
-Quedan las piezas de AWS (SageMaker, CloudWatch, URL pública) y el informe en
-PDF.
+Estado al 27-11-2026: **todo lo que corre en local está hecho y verificado,
+y el informe se genera en PDF de 10 páginas.** Quedan las piezas de AWS
+(SageMaker, CloudWatch, URL pública) y la retroalimentación de la EP2.
 
 ---
 
@@ -54,10 +55,15 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
   - [RESULTADOS.md §2](RESULTADOS.md#2-rendimiento) ·
     [carga_k6_pico.txt](evidencias/carga_k6_pico.txt) ·
     [carga_locust_pico_stats.csv](evidencias/carga_locust_pico_stats.csv).
-- `[x]` **Análisis de costos.** Anexo F de la EP2, más las oportunidades
-  medidas en [RESULTADOS.md §4](RESULTADOS.md#4-oportunidades-de-optimización).
+- `[x]` **Análisis de costos.**
+  - Anexo F de la EP2, recalculado con la capacidad medida.
+  - Tareas de 0,5 vCPU/1 GB: −57% en decision-api (USD 99/mes), con p99 de
+    24,2 ms incluso con una zona caída
+    ([RESULTADOS.md §4](RESULTADOS.md#4-oportunidades-de-optimización)).
+  - Informe, sección 5.
 - `[aws]` **Evidencias: logs y métricas de CloudWatch.**
-  - En local: logs JSON de cada servicio (`docker compose logs`) y
+  - En local: logs JSON del borde (sin la API key), la API y el worker en
+    [logs_servicios.txt](evidencias/logs_servicios.txt), más
     [metricas_prometheus.txt](evidencias/metricas_prometheus.txt).
 
 ### 1.3 Integración de servicios · IE7
@@ -107,8 +113,11 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
   - Token bucket por cliente autenticado: CP-09, CP-10, CP-17 y CP-18.
   - Bajo carga: 26.357 respuestas 429 sin errores
     ([RESULTADOS.md §2.3](RESULTADOS.md#23-rate-limiting-bajo-carga)).
-- `[x]` **Diagrama de secuencia.** Figura 6 de la EP2. La implementación sigue
-  ese orden; el único agregado es la autenticación al inicio.
+- `[x]` **Diagrama de secuencia**
+  - [ep3_secuencia.puml](diagramas/ep3_secuencia.puml) actualiza la Figura 6
+    de la EP2 con lo implementado: autenticación, cuota, degradación y camino
+    asíncrono.
+  - El despliegue está en [ep3_despliegue_local.puml](diagramas/ep3_despliegue_local.puml).
 - `[x]` **Pruebas de interoperabilidad**
   - CP-23, de punta a punta contra el sistema levantado.
   - [pruebas_e2e.txt](evidencias/pruebas_e2e.txt).
@@ -166,13 +175,17 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
   humo de la imagen).
 - `[aws]` **URLs funcionales de dashboard, APIs y modelo.** En local:
   `https://localhost:8443` y `https://localhost:8444`.
-- `[ ]` **Informe técnico en PDF, 10 páginas.** Borrador con los números
-  medidos en [informe/EP3_informe_tecnico.md](informe/EP3_informe_tecnico.md);
-  las secciones de AWS quedan marcadas para completar.
+- `[x]` **Informe técnico en PDF, 10 páginas**
+  - Fuente: [informe/EP3_informe_tecnico.md](informe/EP3_informe_tecnico.md).
+  - El PDF lo genera `python scripts/generar_informe.py`. Los PDF no se
+    versionan y la portada se completa desde `docs/informe/portada.local.json`,
+    porque el repositorio es público.
+  - Quedan marcados para completar los datos de AWS, la retroalimentación de la
+    EP2 y la fecha.
 - `[x]` **Referencias APA, mínimo 2.** En el borrador del informe.
 - `[x]` **Declaración de uso de IA.** En el borrador del informe; hay que
   revisarla.
-- `[ ]` **Nomenclatura:** `EP3_Equipo7_Martinez_Farenden_PenayLillo_Pavon.pdf`.
+- `[x]` **Nomenclatura:** el script genera `EP3_Equipo7_Martinez_Farenden_PenayLillo_Pavon.pdf`.
 
 ---
 
@@ -189,7 +202,7 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
 | [7](https://github.com/kuroishi-py/sentinel-ia/issues/7) | CloudWatch | `[aws]` |
 | [8](https://github.com/kuroishi-py/sentinel-ia/issues/8) | Dashboard con URL | Funciona en local; falta la URL pública `[aws]` |
 | [9](https://github.com/kuroishi-py/sentinel-ia/issues/9) | TLS y autenticación | Hecho en local (Caddy TLS 1.3 + API key); en AWS: mTLS en el ALB |
-| [10](https://github.com/kuroishi-py/sentinel-ia/issues/10) | Informe de 10 páginas | Borrador en `docs/informe/` |
+| [10](https://github.com/kuroishi-py/sentinel-ia/issues/10) | Informe de 10 páginas | PDF de 10 páginas con `scripts/generar_informe.py`; faltan las partes de AWS y de la EP2 |
 | [11](https://github.com/kuroishi-py/sentinel-ia/issues/11) | Pasarela en sa-east-1 | `[ ]` Sigue abierto |
 | [12](https://github.com/kuroishi-py/sentinel-ia/issues/12) | Retroalimentación del docente de la EP2 | `[ ]` Revisar en AVA |
 | [13](https://github.com/kuroishi-py/sentinel-ia/issues/13) | Colaboradores | `[ ]` |

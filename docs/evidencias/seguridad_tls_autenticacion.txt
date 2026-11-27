@@ -1,4 +1,4 @@
-# Seguridad del borde - 2026-11-27T01:25Z - python scripts/verificar_seguridad.py
+# Seguridad del borde - 2026-11-27T02:03Z - python scripts/verificar_seguridad.py
 
 [OK] Version TLS negociada - TLSv1.3, TLS_AES_128_GCM_SHA256
 [OK] Certificado valido para el host - SAN ['localhost'], emisor Caddy Local Authority - ECC Intermediate

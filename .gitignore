@@ -44,3 +44,9 @@ reports/
 .DS_Store
 .idea/
 .vscode/
+
+# Informe: el PDF se regenera con scripts/generar_informe.py; la portada lleva
+# nombres del equipo y el repositorio es publico.
+docs/informe/*.pdf
+docs/informe/portada.local.json
+docs/informe/*.tmp.html

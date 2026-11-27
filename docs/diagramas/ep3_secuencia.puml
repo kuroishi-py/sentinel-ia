@@ -1,0 +1,71 @@
+@startuml ep3_secuencia
+' Secuencia de scoring de la EP3: actualiza la Figura 6 de la EP2 con lo que
+' se implemento (autenticacion, cuota, degradacion por falla del store).
+' Render: docker run --rm -v "$PWD/docs/diagramas:/w" plantuml/plantuml -tpng /w/ep3_secuencia.puml
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam sequenceMessageAlign center
+skinparam BoxPadding 6
+skinparam sequence {
+  ArrowColor #333333
+  LifeLineBorderColor #888888
+  ParticipantBorderColor #333333
+  ParticipantBackgroundColor #FFFFFF
+  GroupBorderColor #888888
+}
+title Scoring de una transaccion · EP3 (camino sincrono y asincrono)
+
+participant "Pasarela\nde pagos" as GW
+participant "Borde TLS\n(Caddy / ALB)" as EDGE
+box "decision-api" #F4F6F7
+participant "ScoreRouter" as API
+participant "Guards\n(clave, cuota,\nLuhn, idempotencia)" as G
+participant "FeatureAssembler" as FA
+participant "XGBoost +\nPolicyEngine" as M
+end box
+database "Redis\n(feature store)" as R
+queue "RabbitMQ\ndecision.v1" as MQ
+participant "shap-worker" as W
+participant "Consola\nFraud Ops" as UI
+
+GW -> EDGE : POST /v1/score (TLS 1.3, X-API-Key)
+EDGE -> API : HTTP por red interna
+API -> G : autenticar y aplicar cuota del cliente
+alt clave ausente o invalida
+  G --> GW : 401 (WWW-Authenticate: ApiKey)
+else cuota agotada
+  G --> GW : 429 (Retry-After)
+end
+API -> G : InputGuard: ningun campo con forma de PAN
+alt campo valida Luhn
+  G --> GW : 422
+end
+API -> R : SET NX idem:<id_tx>
+alt id_tx repetido
+  R --> API : decision guardada
+  API --> GW : 200 misma decision (X-Idempotent-Replay)
+end
+API -> FA : armar features
+FA -> R : una pipeline: leer ventanas 1 h/24 h, perfil y dispositivo,\nescribir la transaccion actual
+alt Redis no responde (timeout 50 ms)
+  FA --> API : valores por defecto, degradada = true
+else
+  R --> FA : estado del usuario
+end
+API -> M : score (en memoria, 1 hilo) y reglas
+note right of M : pasados 60 ms se responde degradado;\nuna degradada nunca se aprueba sola
+M --> API : decision y codigos de razon
+API --> EDGE : 200 {score, decision, version, razones, latency_ms}
+EDGE --> GW : respuesta (p99 medido: 4,5 ms a 116 tx/s)
+
+== Fuera de la ruta critica ==
+API ->> MQ : publicar DecisionEvent (hilo aparte, bufer de 10.000)
+MQ ->> W : cola shap.cases
+alt REVIEW o REJECT
+  W -> W : TreeSHAP sobre las 11 features
+  W -> UI : caso con valores y aportes de cada feature
+end
+UI -> UI : el analista ve por que se decidio
+@enduml

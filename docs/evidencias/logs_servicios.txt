@@ -1,0 +1,27 @@
+# Logs de los servicios - 2026-11-27T01:47Z
+# Extracto de 'docker compose logs' despues de una toma de cuenta y un intento sin clave (CP-23).
+# Todos los servicios escriben JSON en stdout; en AWS van a CloudWatch Logs (EP2 8.3).
+
+## proxy (Caddy): log de acceso del borde TLS. La cabecera X-Api-Key se borra antes de escribir.
+{"ts": 1795744031.915603, "remote_ip": "172.20.0.1", "method": "POST", "uri": "/v1/score", "proto": "HTTP/1.1", "tls_version": "1.3", "status": 200, "duration_ms": 46.79, "headers_registradas": ["Accept", "Accept-Encoding", "Connection", "Content-Length", "Content-Type", "User-Agent"]}
+{"ts": 1795744031.9667983, "remote_ip": "172.20.0.1", "method": "POST", "uri": "/v1/score", "proto": "HTTP/1.1", "tls_version": "1.3", "status": 200, "duration_ms": 49.81, "headers_registradas": ["Accept", "Accept-Encoding", "Connection", "Content-Length", "Content-Type", "User-Agent"]}
+{"ts": 1795744032.0129628, "remote_ip": "172.20.0.1", "method": "POST", "uri": "/v1/score", "proto": "HTTP/1.1", "tls_version": "1.3", "status": 200, "duration_ms": 45.13, "headers_registradas": ["Accept", "Accept-Encoding", "Connection", "Content-Length", "Content-Type", "User-Agent"]}
+{"ts": 1795744032.0584743, "remote_ip": "172.20.0.1", "method": "POST", "uri": "/v1/score", "proto": "HTTP/1.1", "tls_version": "1.3", "status": 200, "duration_ms": 44.38, "headers_registradas": ["Accept", "Accept-Encoding", "Connection", "Content-Length", "Content-Type", "User-Agent"]}
+
+## decision-api: logs de aplicacion (arranque, feature store, modelo) y acceso de gunicorn
+{"ts":"2026-11-27 01:45:57,111","level":"INFO","logger":"src.decision_api.scorer","msg":"Scorer: modelo local v1.0.0-sim (/app/artifacts/model.json)"}
+{"ts":"2026-11-27 01:45:57,111","level":"INFO","logger":"src.decision_api.scorer","msg":"Scorer: modelo local v1.0.0-sim (/app/artifacts/model.json)"}
+{"ts":"2026-11-27 01:45:57,113","level":"INFO","logger":"decision_api","msg":"decision-api listo, modelo v1.0.0-sim"}
+{"ts":"2026-11-27 01:45:57,114","level":"INFO","logger":"decision_api","msg":"decision-api listo, modelo v1.0.0-sim"}
+{"ts":"2026-11-27 01:46:13,534","level":"INFO","logger":"src.decision_api.publisher","msg":"Publisher conectado a rabbitmq, exchange decision.v1"}
+{"ts":"2026-11-27 01:46:13,539","level":"INFO","logger":"src.decision_api.publisher","msg":"Publisher conectado a rabbitmq, exchange decision.v1"}
+172.20.0.7:41788 - "POST /v1/score HTTP/1.1" 200
+172.20.0.7:41788 - "POST /v1/score HTTP/1.1" 200
+172.20.0.7:41788 - "POST /v1/score HTTP/1.1" 200
+
+## shap-worker: casos creados con sus tres razones principales
+{"ts":"2026-11-27 01:47:11,373","level":"INFO","logger":"shap_worker","msg":"Caso tx-GXLUSDSZNNH5DATYAKZDONHPWA (REVIEW): is_new_device, amount_log, amount_vs_user_avg"}
+{"ts":"2026-11-27 01:47:11,919","level":"INFO","logger":"shap_worker","msg":"Caso tx-PNJUKXAEARAAXH7VSHJBMZFROI (REJECT): is_new_device, is_foreign_country, merchant_risk"}
+{"ts":"2026-11-27 01:47:11,970","level":"INFO","logger":"shap_worker","msg":"Caso tx-2OEYORIABFCOVFJBLOIKEWZNCE (REJECT): is_foreign_country, is_new_device, merchant_risk"}
+{"ts":"2026-11-27 01:47:12,017","level":"INFO","logger":"shap_worker","msg":"Caso tx-DBHL3PQXD5H5PIXGFAHDNQF55U (REJECT): is_foreign_country, is_new_device, merchant_risk"}
+{"ts":"2026-11-27 01:47:12,064","level":"INFO","logger":"shap_worker","msg":"Caso tx-MDIODXC6RBEDTK5VKDGMJQC7OM (REJECT): is_foreign_country, is_new_device, merchant_risk"}

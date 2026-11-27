@@ -1,5 +1,5 @@
-# Interoperabilidad de punta a punta (CP-23) - 2026-11-27T01:28Z
-# Borde TLS (Caddy) -> decision-api -> Redis -> RabbitMQ -> shap-worker -> caso
+# Interoperabilidad de punta a punta (CP-23) - 2026-11-27T02:03Z
+# Borde TLS (Caddy) -> decision-api -> Redis -> RabbitMQ -> shap-worker -> caso. Contenedores con raiz de solo lectura.
 
 ============================= test session starts =============================
 testpaths: tests
@@ -15,7 +15,7 @@ tests/test_e2e.py::TestCP23Interoperabilidad::test_rabbitmq_tiene_la_cola_enlaza
 ====================== 6 passed, 95 deselected in 9.44s =======================
 
 # Caso que creo shap-worker para el ultimo rechazo de la toma de cuenta:
-{"id_tx": "tx-IQDCLZYWIFCTXMPXN4ZUMM5SNM", "decision": "REJECT", "score": 1.0, "amount": 390000.0, "merchant_id": "mrc_0280", "reason_codes": ["SCORE_ABOVE_REJECT"], "model_version": "v1.0.0-sim"}
+{"id_tx": "tx-7TNUPG67ZBBBTBCLYPXQFNWBBU", "decision": "REJECT", "score": 1.0, "amount": 390000.0, "merchant_id": "mrc_0280", "reason_codes": ["SCORE_ABOVE_REJECT"], "model_version": "v1.0.0-sim"}
 top_features: ['is_foreign_country', 'is_new_device', 'merchant_risk']
-aportes: {'is_foreign_country': 5.328, 'is_new_device': 4.297, 'merchant_risk': 2.629, 'tx_count_1h': 1.651, 'amount_vs_user_avg': 1.513, 'user_age_days': -1.111, 'hour_of_day': -0.6, 'amount_log': 0.567, 'amount_sum_24h': 0.459, 'distinct_merchants_24h': -0.162, 'tx_count_24h': 0.001}
-valores: {'amount_log': 12.874, 'amount_vs_user_avg': 6.243, 'tx_count_1h': 3.0, 'tx_count_24h': 3.0, 'amount_sum_24h': 730000.0, 'distinct_merchants_24h': 1.0, 'user_age_days': 30.0, 'merchant_risk': 0.095, 'is_foreign_country': 1.0, 'hour_of_day': 1.0, 'is_new_device': 1.0}
+aportes: {'is_foreign_country': 5.043, 'is_new_device': 4.059, 'merchant_risk': 2.581, 'tx_count_1h': 1.67, 'amount_vs_user_avg': 1.427, 'user_age_days': -1.1, 'amount_sum_24h': 0.527, 'amount_log': 0.363, 'hour_of_day': 0.174, 'distinct_merchants_24h': -0.165, 'tx_count_24h': 0.004}
+valores: {'amount_log': 12.874, 'amount_vs_user_avg': 6.243, 'tx_count_1h': 3.0, 'tx_count_24h': 3.0, 'amount_sum_24h': 730000.0, 'distinct_merchants_24h': 1.0, 'user_age_days': 30.0, 'merchant_risk': 0.095, 'is_foreign_country': 1.0, 'hour_of_day': 2.0, 'is_new_device': 1.0}

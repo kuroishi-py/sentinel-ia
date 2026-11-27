@@ -1,4 +1,4 @@
-# Pruebas unitarias e integracion - 2026-11-27T01:28Z
+# Pruebas unitarias e integracion - 2026-11-27T02:02Z
 # Python 3.12, Redis en localhost:6379 (corre la paridad Redis/memoria de CP-20). Las 6 e2e se saltan aqui: ver pruebas_e2e.txt
 
 ============================= test session starts =============================
@@ -136,7 +136,7 @@ src\training\train.py                165    165     0%
 TOTAL                               1589    581    63%
 
 
-======================== 95 passed, 6 skipped in 5.53s ========================
+======================== 95 passed, 6 skipped in 5.62s ========================
 
 # ruff check src tests load dashboard scripts
 All checks passed!
