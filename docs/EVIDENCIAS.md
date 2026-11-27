@@ -39,14 +39,19 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
 - `[x]` **Endpoint configurado (local)**
   - `POST /v1/score`, por TLS en `https://localhost:8443`.
   - Captura: [01_swagger.png](evidencias/01_swagger.png).
-- `[aws]` **Despliegue en cloud**
-  - `src/training/sagemaker_deploy.py` publica el modelo de servicio
-    versionado (sin training job) y compara el score del endpoint con el de la
-    API ([DESPLIEGUE_AWS.md](DESPLIEGUE_AWS.md)). Falta ejecutarlo.
+- `[x]` **Despliegue en cloud**
+  - Endpoint Serverless de SageMaker `sentinel-ia-20261127-1928` (us-east-1)
+    con el modelo de servicio versionado; mismo score que la API en los tres
+    escenarios ([RESULTADOS.md §2.4](RESULTADOS.md)).
+  - API pública detrás de Caddy con certificado de Let's Encrypt en EC2
+    ([DESPLIEGUE_AWS.md](DESPLIEGUE_AWS.md)).
 
 ### 1.2 Plataforma AIaaS e infraestructura · IE4, IE5
 
-- `[aws]` **SageMaker: configuración, instancias, auto-scaling, endpoints.**
+- `[x]` **SageMaker: configuración, instancias, auto-scaling, endpoints.**
+  - Serverless Inference, 2.048 MB, concurrencia máxima 20 (escala con las
+    invocaciones y baja a cero). Medido contra el modelo en memoria a 116 tx/s
+    ([RESULTADOS.md §2.4](RESULTADOS.md)). Faltan las capturas de la consola.
 - `[x]` **Infraestructura mínima operativa (en local)**
   - Modelo funcional: `artifacts/model.json`, verificado por SHA-256.
   - Dataset: simulado, más el de la ULB.
@@ -174,7 +179,10 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
 - `[x]` **Repositorio GitHub con README, código y Dockerfile.** Además: CI en
   `.github/workflows/ci.yml` (ruff, pytest con Redis, control del artefacto y
   humo de la imagen).
-- `[aws]` **URLs funcionales de dashboard, APIs y modelo.** En local:
+- `[x]` **URLs funcionales de dashboard, APIs y modelo.** En AWS (27-11-2026):
+  `https://api.54-221-53-160.sslip.io/docs` y
+  `https://dashboard.54-221-53-160.sslip.io`. La IP cambia si el laboratorio
+  reinicia la instancia (AWS Academy no permitió IP elástica). En local:
   `https://localhost:8443` y `https://localhost:8444`.
 - `[x]` **Informe técnico en PDF, 10 páginas**
   - Fuente: [informe/EP3_informe_tecnico.md](informe/EP3_informe_tecnico.md).
@@ -197,12 +205,12 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
 |---|---|---|
 | [1](https://github.com/kuroishi-py/sentinel-ia/issues/1) | Contrato de features | Decidido: opción C, arriba |
 | [2](https://github.com/kuroishi-py/sentinel-ia/issues/2) | Entrenar con el dataset real | Hecho (b916db4), ahora en `artifacts/benchmark_ulb/` |
-| [3](https://github.com/kuroishi-py/sentinel-ia/issues/3) | Endpoint Serverless de SageMaker | `[aws]` Ver nota abajo |
-| [4](https://github.com/kuroishi-py/sentinel-ia/issues/4) | p99 en memoria contra endpoint | `[aws]` El lado en memoria está medido: p99 de 4,5 ms |
+| [3](https://github.com/kuroishi-py/sentinel-ia/issues/3) | Endpoint Serverless de SageMaker | Hecho: `sentinel-ia-20261127-1928`, misma salida que la API |
+| [4](https://github.com/kuroishi-py/sentinel-ia/issues/4) | p99 en memoria contra endpoint | Hecho: 28 ms frente a 660 ms a 116 tx/s (RESULTADOS §2.4) |
 | [5](https://github.com/kuroishi-py/sentinel-ia/issues/5) | Tramo asíncrono con RabbitMQ | Hecho: CP-23 y capturas 06 y 07 |
 | [6](https://github.com/kuroishi-py/sentinel-ia/issues/6) | Carga a 116 tx/s | Hecho: RESULTADOS §2 |
 | [7](https://github.com/kuroishi-py/sentinel-ia/issues/7) | CloudWatch | `[aws]` |
-| [8](https://github.com/kuroishi-py/sentinel-ia/issues/8) | Dashboard con URL | Funciona en local; falta la URL pública `[aws]` |
+| [8](https://github.com/kuroishi-py/sentinel-ia/issues/8) | Dashboard con URL | Hecho: URL pública con usuario y contraseña en EC2 |
 | [9](https://github.com/kuroishi-py/sentinel-ia/issues/9) | TLS y autenticación | Hecho en local (Caddy TLS 1.3 + API key); en AWS: mTLS en el ALB |
 | [10](https://github.com/kuroishi-py/sentinel-ia/issues/10) | Informe de 10 páginas | PDF de 10 páginas con `scripts/generar_informe.py`; faltan las partes de AWS y de la EP2 |
 | [11](https://github.com/kuroishi-py/sentinel-ia/issues/11) | Pasarela en sa-east-1 | `[ ]` Sigue abierto |
