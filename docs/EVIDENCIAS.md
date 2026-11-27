@@ -10,8 +10,7 @@ despliega en AWS · `[ ]` pendiente del equipo
 
 Estado al 27-11-2026: **todo está hecho y verificado, en local y en AWS
 (SageMaker, EC2, CloudWatch y URL pública), y el informe se genera en PDF de
-10 páginas.** Quedan la retroalimentación de la EP2 y la fecha de entrega en
-la portada.
+10 páginas.** El PDF final se entregó el 27-11-2026.
 
 ---
 
@@ -208,7 +207,7 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
     [EP3_Equipo7_Martinez_Farenden_PenayLillo_Pavon.pdf](informe/EP3_Equipo7_Martinez_Farenden_PenayLillo_Pavon.pdf).
   - Lo genera `python scripts/generar_informe.py`; la portada se completa desde
     `docs/informe/portada.local.json`, que no se versiona.
-  - Quedan marcadas para completar la retroalimentación de la EP2 y la fecha.
+  - Versión final del 27-11-2026, sin marcas pendientes.
 - `[x]` **Referencias APA, mínimo 2.** En el borrador del informe.
 - `[x]` **Declaración de uso de IA.** En el borrador del informe; hay que
   revisarla.
@@ -229,7 +228,7 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
 | [7](https://github.com/kuroishi-py/sentinel-ia/issues/7) | CloudWatch | Hecho: grupos `/sentinel-ia/*`, capturas 10 a 12 |
 | [8](https://github.com/kuroishi-py/sentinel-ia/issues/8) | Dashboard con URL | Hecho: URL pública con usuario y contraseña en EC2 |
 | [9](https://github.com/kuroishi-py/sentinel-ia/issues/9) | TLS y autenticación | Hecho en local (Caddy TLS 1.3 + API key); en AWS: mTLS en el ALB |
-| [10](https://github.com/kuroishi-py/sentinel-ia/issues/10) | Informe de 10 páginas | PDF de 10 páginas con `scripts/generar_informe.py`, con AWS; falta la retroalimentación de la EP2 |
+| [10](https://github.com/kuroishi-py/sentinel-ia/issues/10) | Informe de 10 páginas | PDF de 10 páginas con `scripts/generar_informe.py`, con AWS; entregado el 27-11-2026 |
 | [11](https://github.com/kuroishi-py/sentinel-ia/issues/11) | Pasarela en sa-east-1 | `[ ]` Sigue abierto |
 | [12](https://github.com/kuroishi-py/sentinel-ia/issues/12) | Retroalimentación del docente de la EP2 | `[ ]` Revisar en AVA |
 | [13](https://github.com/kuroishi-py/sentinel-ia/issues/13) | Colaboradores | `[ ]` |

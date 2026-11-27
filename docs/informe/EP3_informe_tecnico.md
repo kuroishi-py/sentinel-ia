@@ -29,7 +29,7 @@ docs/informe/portada.local.json, que no se versiona.
 | 2.3 Casos de prueba, rendimiento, carga, métricas del modelo, optimización | IE10 | 4 |
 | Aspectos formales: README, Dockerfile, referencias APA, declaración de IA | — | Repositorio y final |
 
-**Retroalimentación de entregas anteriores.** En la EP1 no hubo observaciones. [COMPLETAR: observaciones del docente a la EP2 y cómo se incorporaron.]
+**Retroalimentación de entregas anteriores.** En la EP1 no hubo observaciones.
 
 ## 1. Qué se construyó
 
