@@ -8,9 +8,10 @@ criterio, en [RUBRICA.md](RUBRICA.md).
 Leyenda: `[x]` hecho y verificado en local · `[aws]` falta la parte que se
 despliega en AWS · `[ ]` pendiente del equipo
 
-Estado al 27-11-2026: **todo lo que corre en local está hecho y verificado,
-y el informe se genera en PDF de 10 páginas.** Quedan las piezas de AWS
-(SageMaker, CloudWatch, URL pública) y la retroalimentación de la EP2.
+Estado al 27-11-2026: **todo está hecho y verificado, en local y en AWS
+(SageMaker, EC2, CloudWatch y URL pública), y el informe se genera en PDF de
+10 páginas.** Quedan la retroalimentación de la EP2 y la fecha de entrega en
+la portada.
 
 ---
 
@@ -51,7 +52,12 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
 - `[x]` **SageMaker: configuración, instancias, auto-scaling, endpoints.**
   - Serverless Inference, 2.048 MB, concurrencia máxima 20 (escala con las
     invocaciones y baja a cero). Medido contra el modelo en memoria a 116 tx/s
-    ([RESULTADOS.md §2.4](RESULTADOS.md)). Faltan las capturas de la consola.
+    ([RESULTADOS.md §2.4](RESULTADOS.md)).
+  - Capturas: [08_sagemaker_endpoint.png](evidencias/08_sagemaker_endpoint.png),
+    [08b_sagemaker_configuracion.png](evidencias/08b_sagemaker_configuracion.png),
+    [09_sagemaker_latencia_modelo.png](evidencias/09_sagemaker_latencia_modelo.png)
+    (`ModelLatency` de unos 2 ms bajo carga) y
+    [09b_sagemaker_errores.png](evidencias/09b_sagemaker_errores.png) (0 errores).
 - `[x]` **Infraestructura mínima operativa (en local)**
   - Modelo funcional: `artifacts/model.json`, verificado por SHA-256.
   - Dataset: simulado, más el de la ULB.
@@ -67,7 +73,16 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
     24,2 ms incluso con una zona caída
     ([RESULTADOS.md §4](RESULTADOS.md#4-oportunidades-de-optimización)).
   - Informe, sección 5.
-- `[aws]` **Evidencias: logs y métricas de CloudWatch.**
+  - En AWS: USD 0,03 al 27-11-2026 según *Costo y uso*
+    ([14_costo.png](evidencias/14_costo.png)).
+- `[x]` **Evidencias: logs y métricas de CloudWatch.**
+  - En AWS: seis grupos de logs `/sentinel-ia/*` y el de SageMaker
+    ([10_cloudwatch_grupos_de_logs.png](evidencias/10_cloudwatch_grupos_de_logs.png),
+    [10b_cloudwatch_flujos_api.png](evidencias/10b_cloudwatch_flujos_api.png),
+    [10c_cloudwatch_eventos_api.png](evidencias/10c_cloudwatch_eventos_api.png));
+    instancia y CPU en
+    [11_ec2_instancia.png](evidencias/11_ec2_instancia.png) y
+    [12_ec2_monitoreo.png](evidencias/12_ec2_monitoreo.png).
   - En local: logs JSON del borde (sin la API key), la API y el worker en
     [logs_servicios.txt](evidencias/logs_servicios.txt), más
     [metricas_prometheus.txt](evidencias/metricas_prometheus.txt).
@@ -97,7 +112,10 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
     y [05_dashboard_casos.png](evidencias/05_dashboard_casos.png).
 - `[x]` **Capturas del modelo funcionando (en local)**
   - [03_dashboard_calidad_modelo.png](evidencias/03_dashboard_calidad_modelo.png).
-  - `[aws]` Faltan las de SageMaker.
+  - En AWS: [13_dashboard_aws.png](evidencias/13_dashboard_aws.png), con los
+    3.054 casos de la prueba contra SageMaker (los contadores de arriba están en
+    0 porque la API se reinició al volver al modelo en memoria) y las capturas
+    de SageMaker del punto anterior.
 
 ### 2.2 Integración de servicios · IE7
 
@@ -190,8 +208,7 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
     [EP3_Equipo7_Martinez_Farenden_PenayLillo_Pavon.pdf](informe/EP3_Equipo7_Martinez_Farenden_PenayLillo_Pavon.pdf).
   - Lo genera `python scripts/generar_informe.py`; la portada se completa desde
     `docs/informe/portada.local.json`, que no se versiona.
-  - Quedan marcados para completar los datos de AWS, la retroalimentación de la
-    EP2 y la fecha.
+  - Quedan marcadas para completar la retroalimentación de la EP2 y la fecha.
 - `[x]` **Referencias APA, mínimo 2.** En el borrador del informe.
 - `[x]` **Declaración de uso de IA.** En el borrador del informe; hay que
   revisarla.
@@ -209,10 +226,10 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
 | [4](https://github.com/kuroishi-py/sentinel-ia/issues/4) | p99 en memoria contra endpoint | Hecho: 28 ms frente a 660 ms a 116 tx/s (RESULTADOS §2.4) |
 | [5](https://github.com/kuroishi-py/sentinel-ia/issues/5) | Tramo asíncrono con RabbitMQ | Hecho: CP-23 y capturas 06 y 07 |
 | [6](https://github.com/kuroishi-py/sentinel-ia/issues/6) | Carga a 116 tx/s | Hecho: RESULTADOS §2 |
-| [7](https://github.com/kuroishi-py/sentinel-ia/issues/7) | CloudWatch | `[aws]` |
+| [7](https://github.com/kuroishi-py/sentinel-ia/issues/7) | CloudWatch | Hecho: grupos `/sentinel-ia/*`, capturas 10 a 12 |
 | [8](https://github.com/kuroishi-py/sentinel-ia/issues/8) | Dashboard con URL | Hecho: URL pública con usuario y contraseña en EC2 |
 | [9](https://github.com/kuroishi-py/sentinel-ia/issues/9) | TLS y autenticación | Hecho en local (Caddy TLS 1.3 + API key); en AWS: mTLS en el ALB |
-| [10](https://github.com/kuroishi-py/sentinel-ia/issues/10) | Informe de 10 páginas | PDF de 10 páginas con `scripts/generar_informe.py`; faltan las partes de AWS y de la EP2 |
+| [10](https://github.com/kuroishi-py/sentinel-ia/issues/10) | Informe de 10 páginas | PDF de 10 páginas con `scripts/generar_informe.py`, con AWS; falta la retroalimentación de la EP2 |
 | [11](https://github.com/kuroishi-py/sentinel-ia/issues/11) | Pasarela en sa-east-1 | `[ ]` Sigue abierto |
 | [12](https://github.com/kuroishi-py/sentinel-ia/issues/12) | Retroalimentación del docente de la EP2 | `[ ]` Revisar en AVA |
 | [13](https://github.com/kuroishi-py/sentinel-ia/issues/13) | Colaboradores | `[ ]` |
