@@ -1,0 +1,142 @@
+# Pruebas unitarias e integracion - 2026-11-27T01:28Z
+# Python 3.12, Redis en localhost:6379 (corre la paridad Redis/memoria de CP-20). Las 6 e2e se saltan aqui: ver pruebas_e2e.txt
+
+============================= test session starts =============================
+testpaths: tests
+collecting ... collected 101 items
+
+tests/test_api.py::TestCP13ContratoDeLaAPI::test_respuesta_trae_todos_los_campos PASSED
+tests/test_api.py::TestCP13ContratoDeLaAPI::test_el_esquema_openapi_se_publica PASSED
+tests/test_api.py::TestCP13ContratoDeLaAPI::test_esquema_invalido_devuelve_422 PASSED
+tests/test_api.py::TestCP13ContratoDeLaAPI::test_monto_negativo_se_rechaza PASSED
+tests/test_api.py::TestCP14GuardrailEnCaliente::test_pan_en_el_token_devuelve_422 PASSED
+tests/test_api.py::TestCP15IdempotenciaExtremoAExtremo::test_la_segunda_llamada_repite_la_decision PASSED
+tests/test_api.py::TestCP15IdempotenciaExtremoAExtremo::test_cambiar_el_monto_no_altera_la_decision_guardada PASSED
+tests/test_api.py::TestCP16SaludYMetricas::test_health_live_responde PASSED
+tests/test_api.py::TestCP16SaludYMetricas::test_health_ready_indica_el_backend PASSED
+tests/test_api.py::TestCP16SaludYMetricas::test_metrics_expone_el_formato_prometheus PASSED
+tests/test_api.py::TestCP16SaludYMetricas::test_sin_modelo_nada_se_aprueba_a_ciegas PASSED
+tests/test_api.py::TestCP17RateLimitEnCaliente::test_cuota_baja_bloquea_y_trae_retry_after PASSED
+tests/test_e2e.py::TestCP23Interoperabilidad::test_el_borde_solo_habla_tls_13 SKIPPED (requiere SENTINEL_E2E_URL)
+tests/test_e2e.py::TestCP23Interoperabilidad::test_los_endpoints_de_operacion_no_se_ven_desde_afuera SKIPPED (requiere SENTINEL_E2E_URL)
+tests/test_e2e.py::TestCP23Interoperabilidad::test_sin_clave_el_borde_no_deja_pasar SKIPPED (requiere SENTINEL_E2E_URL)
+tests/test_e2e.py::TestCP23Interoperabilidad::test_una_toma_de_cuenta_termina_en_un_caso_explicado SKIPPED (requiere SENTINEL_E2E_URL)
+tests/test_e2e.py::TestCP23Interoperabilidad::test_una_compra_normal_no_genera_caso SKIPPED (requiere SENTINEL_E2E_URL)
+tests/test_e2e.py::TestCP23Interoperabilidad::test_rabbitmq_tiene_la_cola_enlazada_y_un_consumidor SKIPPED (requiere SENTINEL_E2E_URL)
+tests/test_features_telemetry.py::TestCP11FeatureParity::test_el_vector_respeta_el_orden_declarado PASSED
+tests/test_features_telemetry.py::TestCP11FeatureParity::test_sin_feature_store_la_decision_queda_degradada PASSED
+tests/test_features_telemetry.py::TestCP11FeatureParity::test_pais_extranjero_marca_la_feature PASSED
+tests/test_features_telemetry.py::TestCP11FeatureParity::test_dispositivo_desconocido_marca_la_feature PASSED
+tests/test_features_telemetry.py::TestCP11FeatureParity::test_una_feature_faltante_se_rellena_con_cero PASSED
+tests/test_features_telemetry.py::TestCP12Percentiles::test_percentiles_sobre_una_muestra_conocida PASSED
+tests/test_features_telemetry.py::TestCP12Percentiles::test_sin_muestras_los_percentiles_son_cero PASSED
+tests/test_features_telemetry.py::TestCP12Percentiles::test_una_sola_muestra PASSED
+tests/test_features_telemetry.py::TestCP12Percentiles::test_el_snapshot_cuenta_decisiones_y_degradadas PASSED
+tests/test_features_telemetry.py::TestCP12Percentiles::test_el_formato_prometheus_trae_las_series_esperadas PASSED
+tests/test_features_telemetry.py::TestCP12Percentiles::test_el_histograma_es_acumulativo PASSED
+tests/test_guards.py::TestCP01LuhnDetectaTarjetas::test_numeros_de_tarjeta_validan[4111111111111111] PASSED
+tests/test_guards.py::TestCP01LuhnDetectaTarjetas::test_numeros_de_tarjeta_validan[5500005555555559] PASSED
+tests/test_guards.py::TestCP01LuhnDetectaTarjetas::test_numeros_de_tarjeta_validan[4000056655665556] PASSED
+tests/test_guards.py::TestCP01LuhnDetectaTarjetas::test_numeros_de_tarjeta_validan[378282246310005] PASSED
+tests/test_guards.py::TestCP01LuhnDetectaTarjetas::test_numeros_cualquiera_no_validan[4111111111111112] PASSED
+tests/test_guards.py::TestCP01LuhnDetectaTarjetas::test_numeros_cualquiera_no_validan[1234567890123] PASSED
+tests/test_guards.py::TestCP01LuhnDetectaTarjetas::test_numeros_cualquiera_no_validan[0000000000000001] PASSED
+tests/test_guards.py::TestCP01LuhnDetectaTarjetas::test_largos_fuera_de_rango_se_descartan[411111111111] PASSED
+tests/test_guards.py::TestCP01LuhnDetectaTarjetas::test_largos_fuera_de_rango_se_descartan[41111111111111111111] PASSED
+tests/test_guards.py::TestCP01LuhnDetectaTarjetas::test_largos_fuera_de_rango_se_descartan[] PASSED
+tests/test_guards.py::TestCP01LuhnDetectaTarjetas::test_largos_fuera_de_rango_se_descartan[abcd] PASSED
+tests/test_guards.py::TestCP02InputGuardRechazaPAN::test_transaccion_limpia_pasa PASSED
+tests/test_guards.py::TestCP02InputGuardRechazaPAN::test_pan_en_el_token_de_usuario_se_rechaza PASSED
+tests/test_guards.py::TestCP02InputGuardRechazaPAN::test_pan_con_separadores_tambien_se_detecta PASSED
+tests/test_guards.py::TestCP02InputGuardRechazaPAN::test_pan_escondido_dentro_de_otro_texto PASSED
+tests/test_guards.py::TestCP02InputGuardRechazaPAN::test_identificador_largo_sin_luhn_no_molesta PASSED
+tests/test_guards.py::TestCP03IdempotenciaDevuelveLaMismaDecision::test_la_primera_llamada_reserva_y_la_segunda_no PASSED
+tests/test_guards.py::TestCP03IdempotenciaDevuelveLaMismaDecision::test_la_decision_guardada_se_recupera_identica PASSED
+tests/test_guards.py::TestCP03IdempotenciaDevuelveLaMismaDecision::test_sin_decision_previa_devuelve_none PASSED
+tests/test_guards.py::TestCP03IdempotenciaDevuelveLaMismaDecision::test_ids_distintos_no_se_pisan PASSED
+tests/test_guards.py::TestCP04IdempotenciaToleraDatosCorruptos::test_json_invalido_se_trata_como_ausente PASSED
+tests/test_model_features.py::TestCP20VentanasDeVelocidad::test_la_transaccion_actual_no_se_cuenta_a_si_misma PASSED
+tests/test_model_features.py::TestCP20VentanasDeVelocidad::test_ventana_de_una_hora_y_de_24_horas PASSED
+tests/test_model_features.py::TestCP20VentanasDeVelocidad::test_lo_de_hace_mas_de_24_horas_ya_no_cuenta PASSED
+tests/test_model_features.py::TestCP20VentanasDeVelocidad::test_monto_sobre_el_promedio_del_usuario PASSED
+tests/test_model_features.py::TestCP20VentanasDeVelocidad::test_un_dispositivo_es_nuevo_durante_sus_primeras_24_horas PASSED
+tests/test_model_features.py::TestCP20VentanasDeVelocidad::test_el_riesgo_del_comercio_sale_de_la_tabla_entrenada PASSED
+tests/test_model_features.py::TestCP20VentanasDeVelocidad::test_redis_y_memoria_calculan_lo_mismo PASSED
+tests/test_model_features.py::TestCP20bParidadEntrenamientoServicio::test_la_simulacion_trae_fraude_y_particion_temporal PASSED
+tests/test_model_features.py::TestCP20bParidadEntrenamientoServicio::test_el_riesgo_por_comercio_sale_solo_del_periodo_de_referencia PASSED
+tests/test_model_features.py::TestCP20bParidadEntrenamientoServicio::test_reproducir_por_la_api_da_las_mismas_features PASSED
+tests/test_model_features.py::TestCP21ModeloServido::test_el_contrato_de_features_coincide_con_la_api PASSED
+tests/test_model_features.py::TestCP21ModeloServido::test_carga_el_modelo_real_y_no_el_de_respaldo PASSED
+tests/test_model_features.py::TestCP21ModeloServido::test_una_transaccion_corriente_puntua_bajo PASSED
+tests/test_model_features.py::TestCP21ModeloServido::test_una_toma_de_cuenta_puntua_alto PASSED
+tests/test_model_features.py::TestCP21ModeloServido::test_mas_sospechoso_nunca_puntua_menos[tx_count_1h-0.0-6.0] PASSED
+tests/test_model_features.py::TestCP21ModeloServido::test_mas_sospechoso_nunca_puntua_menos[amount_vs_user_avg-1.0-10.0] PASSED
+tests/test_model_features.py::TestCP21ModeloServido::test_mas_sospechoso_nunca_puntua_menos[is_new_device-0.0-1.0] PASSED
+tests/test_model_features.py::TestCP21ModeloServido::test_mas_sospechoso_nunca_puntua_menos[is_foreign_country-0.0-1.0] PASSED
+tests/test_model_features.py::TestCP21ModeloServido::test_mas_sospechoso_nunca_puntua_menos[merchant_risk-0.0-0.2] PASSED
+tests/test_model_features.py::TestCP21ModeloServido::test_un_artefacto_alterado_no_se_carga PASSED
+tests/test_model_features.py::TestCP22Explicacion::test_la_explicacion_suma_el_score PASSED
+tests/test_model_features.py::TestCP22Explicacion::test_las_razones_principales_son_las_senales_de_la_toma_de_cuenta PASSED
+tests/test_policy.py::TestCP05UmbralesDelScore::test_score_bajo_se_aprueba PASSED
+tests/test_policy.py::TestCP05UmbralesDelScore::test_score_intermedio_va_a_revision PASSED
+tests/test_policy.py::TestCP05UmbralesDelScore::test_score_alto_se_rechaza PASSED
+tests/test_policy.py::TestCP05UmbralesDelScore::test_el_umbral_es_inclusivo PASSED
+tests/test_policy.py::TestCP06LasReglasNoAblandan::test_usuario_en_lista_negra_se_rechaza_con_score_bajo PASSED
+tests/test_policy.py::TestCP06LasReglasNoAblandan::test_comercio_en_lista_negra_se_rechaza PASSED
+tests/test_policy.py::TestCP06LasReglasNoAblandan::test_pais_bloqueado_se_rechaza PASSED
+tests/test_policy.py::TestCP06LasReglasNoAblandan::test_monto_alto_no_se_aprueba_solo PASSED
+tests/test_policy.py::TestCP06LasReglasNoAblandan::test_monto_alto_no_rebaja_un_rechazo PASSED
+tests/test_policy.py::TestCP07DecisionDegradada::test_degradado_sube_de_aprobar_a_revisar PASSED
+tests/test_policy.py::TestCP07DecisionDegradada::test_degradado_no_cambia_un_rechazo PASSED
+tests/test_policy.py::TestCP08BotonDePanico::test_modo_solo_reglas_ignora_el_score PASSED
+tests/test_policy.py::TestCP08BotonDePanico::test_modo_solo_reglas_mantiene_las_listas_negras PASSED
+tests/test_ratelimit.py::TestCP09CuotaPorCliente::test_la_rafaga_se_agota_y_despues_bloquea PASSED
+tests/test_ratelimit.py::TestCP09CuotaPorCliente::test_los_clientes_no_comparten_cuota PASSED
+tests/test_ratelimit.py::TestCP09CuotaPorCliente::test_rate_y_burst_deben_ser_positivos PASSED
+tests/test_ratelimit.py::TestCP10RellenoDelBalde::test_al_pasar_el_tiempo_vuelve_a_haber_cuota PASSED
+tests/test_ratelimit.py::TestCP10RellenoDelBalde::test_el_balde_no_pasa_de_burst PASSED
+tests/test_ratelimit.py::TestCP10RellenoDelBalde::test_retry_after_estima_la_espera PASSED
+tests/test_ratelimit.py::TestCP10RellenoDelBalde::test_retry_after_es_cero_si_hay_cuota PASSED
+tests/test_security_resilience.py::TestCP18Autenticacion::test_sin_clave_devuelve_401 PASSED
+tests/test_security_resilience.py::TestCP18Autenticacion::test_clave_invalida_devuelve_401 PASSED
+tests/test_security_resilience.py::TestCP18Autenticacion::test_clave_valida_pasa PASSED
+tests/test_security_resilience.py::TestCP18Autenticacion::test_los_health_checks_no_piden_clave PASSED
+tests/test_security_resilience.py::TestCP18Autenticacion::test_el_contrato_declara_el_esquema_de_seguridad PASSED
+tests/test_security_resilience.py::TestCP18Autenticacion::test_probar_claves_tambien_tiene_cuota PASSED
+tests/test_security_resilience.py::TestCP19FallasDelStore::test_reserve_con_timeout_trata_la_transaccion_como_nueva PASSED
+tests/test_security_resilience.py::TestCP19FallasDelStore::test_remember_y_recall_con_timeout_no_lanzan PASSED
+tests/test_security_resilience.py::TestCP19FallasDelStore::test_la_api_responde_200_con_el_store_caido PASSED
+
+---------- coverage: platform win32, python 3.12.16-final-0 ----------
+Name                               Stmts   Miss  Cover
+------------------------------------------------------
+src\__init__.py                        0      0   100%
+src\decision_api\__init__.py           0      0   100%
+src\decision_api\config.py            63      0   100%
+src\decision_api\features.py         152     15    90%
+src\decision_api\guards.py            87      3    97%
+src\decision_api\main.py             186     42    77%
+src\decision_api\policy.py            55      1    98%
+src\decision_api\publisher.py         94     62    34%
+src\decision_api\ratelimit.py         43      4    91%
+src\decision_api\schemas.py           55      0   100%
+src\decision_api\scorer.py           125     35    72%
+src\decision_api\telemetry.py        114      4    96%
+src\demo\__init__.py                   0      0   100%
+src\demo\scenarios.py                 32     21    34%
+src\demo\seed.py                      37     37     0%
+src\shap_worker\__init__.py            0      0   100%
+src\shap_worker\main.py               88     46    48%
+src\training\__init__.py               0      0   100%
+src\training\download_dataset.py     112    112     0%
+src\training\inference.py             34     34     0%
+src\training\simulate.py             147      0   100%
+src\training\train.py                165    165     0%
+------------------------------------------------------
+TOTAL                               1589    581    63%
+
+
+======================== 95 passed, 6 skipped in 5.53s ========================
+
+# ruff check src tests load dashboard scripts
+All checks passed!

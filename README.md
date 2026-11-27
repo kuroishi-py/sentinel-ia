@@ -7,81 +7,140 @@ rechazar— con su explicación.
 **Equipo 7** · Martínez · Farenden · Peña y Lillo · Pavón
 **ITY1102 Arquitectura de Sistemas de Inteligencia Artificial** · Evaluación Parcial 3
 
-Este repositorio es la implementación de la arquitectura diseñada en la EP1 y la
-EP2 (`EP2_SENTINEL-IA_arc42_v2.md`). Cada módulo apunta en sus comentarios a la
+Este repositorio implementa la arquitectura diseñada en la EP1 y la EP2
+(`EP2_SENTINEL-IA_arc42_v2.md`). Cada módulo apunta en sus comentarios a la
 sección de ese documento que lo justifica.
 
----
-
-## El problema
-
-Una fintech con 200.000 usuarios y 200.000 transacciones diarias opera un motor
-de reglas con **40% de falsos positivos** y pierde **USD 500.000 anuales** en
-fraude no contenido. SENTINEL-IA lo reemplaza por un modelo que califica cada
-transacción en menos de 100 ms, explica cada rechazo y escala a 1.000.000 de
-transacciones diarias sin rediseño.
-
-| Objetivo | Valor |
+| Objetivo (EP2) | Medido en local, a 116 tx/s |
 |---|---|
-| Latencia p99 en la pasarela | < 100 ms |
-| Latencia p99 interna | < 30 ms |
-| Disponibilidad | 99,9% mensual |
-| Pico de carga | 116 tx/s |
-| Falsos positivos | menos que el 40% actual, sin perder recall |
+| p99 en la pasarela < 100 ms | **4,5 ms** (k6, 3 min, 0% errores) |
+| p99 interno < 30 ms | **3,6 ms** (solicitud completa en el servidor) |
+| Capacidad supuesta: 120 req/s por tarea de 1 vCPU | **375 req/s** con p99 < 30 ms |
+| Menos falsos positivos que el motor de reglas | 63 alertas falsas contra 6.396 del motor, en los mismos datos |
+
+Todo en [docs/RESULTADOS.md](docs/RESULTADOS.md); el mapa pauta → evidencia, en
+[docs/EVIDENCIAS.md](docs/EVIDENCIAS.md).
 
 ---
 
 ## Cómo correrlo
 
-### Local, sin Docker
+### Todo el sistema, con Docker (recomendado)
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
-```
-
-Entrena un modelo. Con `--synthetic` se genera un dataset con el desbalance del
-caso (0,5% de fraude), suficiente para verificar que todo el pipeline corre:
-
-```bash
-python -m src.training.train --synthetic
-```
-
-Levanta la API:
-
-```bash
-uvicorn src.decision_api.main:app --reload
-```
-
-El contrato queda en <http://localhost:8000/docs>. Una transacción de prueba:
-
-```bash
-curl -X POST http://localhost:8000/v1/score -H 'content-type: application/json' -d '{"id_tx":"tx-00000001","user_token":"usr_demo","merchant_id":"mrc_0042","amount":19990,"currency":"CLP","country":"CL"}'
-```
-
-### Local, con Docker
-
-Levanta API, Redis, RabbitMQ, el worker de SHAP y el dashboard:
-
-```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 | Servicio | URL |
 |---|---|
-| API y Swagger | <http://localhost:8000/docs> |
-| Dashboard de Fraud Ops | <http://localhost:8501> |
+| API por TLS 1.3 (el camino de pagos) | <https://localhost:8443/docs> |
+| Dashboard de Fraud Ops por TLS 1.3 | <https://localhost:8444> |
+| API sin TLS, solo local | <http://localhost:8000/docs> |
+| Dashboard sin TLS, solo local | <http://localhost:8501> |
 | RabbitMQ (guest/guest) | <http://localhost:15672> |
-| Métricas Prometheus | <http://localhost:8000/metrics> |
 
-### Con el dataset real
-
-Para el informe hay que usar datos reales, no sintéticos. Descarga
-`creditcard.csv` (Credit Card Fraud Detection, ULB — 284.807 transacciones,
-0,17% de fraude) a `data/` y entrena:
+El certificado lo firma la CA local de Caddy. El navegador va a advertir; para
+que curl o Python confíen en él:
 
 ```bash
-python -m src.training.train --data data/creditcard.csv --label Class
+docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt reports/caddy-root.crt
+curl --cacert reports/caddy-root.crt https://localhost:8443/health/ready
+# En Windows, el curl del sistema (Schannel) necesita ademas --ssl-no-revoke
+```
+
+`POST /v1/score` exige la cabecera `X-API-Key`. La clave de la demo local es
+`sentinel-demo-local`; para cambiarla, copia `.env.example` a `.env`.
+
+```bash
+curl --cacert reports/caddy-root.crt https://localhost:8443/v1/score \
+  -H 'X-API-Key: sentinel-demo-local' -H 'content-type: application/json' \
+  -d '{"id_tx":"tx-demo-0001","user_token":"usr_demo_0001","merchant_id":"mrc_0042","amount":19990,"currency":"CLP","country":"CL"}'
+```
+
+En el dashboard, la pestaña **Probar transacciones** arma un usuario con un mes
+de historia y dispara una toma de cuenta o una prueba de tarjeta. Muestra cómo
+decide la API y, segundos después, la explicación SHAP que llega por RabbitMQ.
+Enlaces directos: `?vista=probar&escenario=ato`, `?vista=modelo` y
+`?vista=casos`.
+
+En Linux, para que el worker escriba en `data/`: `SENTINEL_UID=$(id -u) docker compose up -d`.
+
+### Solo la API, sin Docker
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
+
+FEATURE_STORE=memory PUBLISHER_ENABLED=false API_KEYS=local:clave-local \
+  uvicorn src.decision_api.main:app --reload
+```
+
+Sin Redis, el feature store queda en memoria del proceso; sin RabbitMQ no hay
+explicaciones. El modelo (`artifacts/model.json`) viene en el repositorio.
+
+---
+
+## Pruebas
+
+```bash
+pytest                                  # 95 unitarias y de integracion (CP-01 a CP-22)
+pytest --cov=src --cov-report=term      # con cobertura
+ruff check src tests load dashboard scripts
+
+# con el sistema levantado: interoperabilidad de punta a punta (CP-23)
+docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt reports/caddy-root.crt
+SENTINEL_E2E_URL=https://localhost:8443 pytest -m e2e -v
+
+python scripts/verificar_seguridad.py   # TLS 1.3, API key, endpoints ocultos, HSTS
+```
+
+Son 24 casos (CP-01 a CP-23, más CP-20b) en 101 funciones; la tabla está en
+[docs/EVIDENCIAS.md](docs/EVIDENCIAS.md#23-testing-y-calidad--ie10). Si hay un
+Redis en `REDIS_URL`, CP-20 compara además el feature store en Redis contra el
+de memoria. La CI (`.github/workflows/ci.yml`) corre ruff y pytest con Redis,
+controla que el modelo versionado corresponda al entrenamiento y levanta la
+imagen.
+
+### Carga
+
+```bash
+docker compose exec api python -m src.demo.seed --users 20000      # usuarios con historia
+docker compose --profile carga run --rm k6                          # 116 tx/s, 3 min
+PERFIL=pico docker compose --profile carga run --rm locust          # lo mismo con Locust
+PERFIL=capacidad DURACION=1m docker compose --profile carga run --rm locust
+```
+
+La carga corre dentro de la red de Docker, contra la tarea, como el
+balanceador. La precarga hace falta: sin historia, cada solicitud parece una
+cuenta nueva desde un dispositivo nuevo y el modelo la manda a revisión. Por
+qué k6 además de Locust:
+[RESULTADOS.md §2.1](docs/RESULTADOS.md#21-pico-del-caso-116-txs-durante-3-minutos).
+
+---
+
+## El modelo
+
+Hay dos, a propósito (issue #1):
+
+- **Modelo de servicio** (`artifacts/`): XGBoost con las 11 features del diseño
+  (velocidad 1 h/24 h, monto frente al promedio del usuario, dispositivo nuevo,
+  riesgo del comercio...).
+  - Responde `/v1/score` y se explica en el dashboard.
+  - Se entrena con una historia de transacciones simulada
+    (`src/training/simulate.py`) cuyas features calcula el mismo código que la
+    API, así que entrenamiento y servicio no pueden divergir (RT2).
+  - Usa restricciones monotónicas contra la evasión.
+  - En los 14 días de prueba: precision 0,87, recall 0,83 y 0,09% de falsos
+    positivos sobre transacciones legítimas.
+- **Benchmark real** (`artifacts/benchmark_ulb/`): el mismo algoritmo sobre las
+  284.807 transacciones reales de la ULB. Precision 0,87 y recall 0,84. Sus
+  features son componentes PCA: sirve para medir, no para servir ni para
+  explicar.
+
+```bash
+python -m src.training.train --simulated --model-version v1.0.0-sim   # reentrena el de servicio
+python -m src.training.download_dataset                                # benchmark: baja la ULB
+python -m src.training.train --data data/creditcard.csv --drop Time --out artifacts/benchmark_ulb
 ```
 
 ---
@@ -89,135 +148,75 @@ python -m src.training.train --data data/creditcard.csv --label Class
 ## Estructura
 
 ```
-src/decision_api/      La API de scoring (ScoreRouter de la EP2, sección 5.2)
-  schemas.py           Contrato POST /v1/score y evento decision.v1
-  guards.py            InputGuard (rechazo de PAN por Luhn) e IdempotencyGuard
-  features.py          FeatureAssembler: perfil y contadores en una sola llamada
-  scorer.py            ModelScorer y ModelLoader, backends local y SageMaker
-  policy.py            PolicyEngine: umbrales, listas negras, botón de pánico
+src/decision_api/      La API de scoring (ScoreRouter de la EP2, seccion 5.2)
+  main.py              Orden del camino sincrono: clave, cuota, guardrail, idempotencia, features, modelo, reglas
+  features.py          compute_features (pura) + feature store en Redis o en memoria
+  guards.py            InputGuard (rechazo de PAN por Luhn) e IdempotencyGuard tolerante a fallas
+  scorer.py            ModelLoader (SHA-256, warm-up, 1 hilo) y backends local y SageMaker
+  policy.py            PolicyEngine: umbrales, listas negras, boton de panico
   ratelimit.py         Token bucket por cliente
-  publisher.py         Publicación asíncrona a RabbitMQ, nunca bloquea el pago
-  telemetry.py         /metrics y percentiles p50, p95, p99
+  publisher.py         Publicacion asincrona a RabbitMQ, nunca bloquea el pago
+  telemetry.py         /metrics, /v1/stats y percentiles p50, p95, p99
 src/shap_worker/       Consume decision.v1, calcula TreeSHAP y crea el caso
-src/training/          Entrenamiento local y despliegue en SageMaker
+src/training/          Simulador, entrenamiento, benchmark ULB y despliegue en SageMaker
+src/demo/              Escenarios de demostracion y precarga para la prueba de carga
 dashboard/             Consola de Fraud Ops (Streamlit)
-tests/                 17 casos de prueba (64 funciones), unitarios y de integración
-load/                  Prueba de carga con Locust
-docs/EVIDENCIAS.md     Mapa de cada punto de la pauta a su evidencia
+deploy/Caddyfile       Borde TLS 1.3 (el papel del ALB en la EP2)
+load/                  Locust y k6
+scripts/               Verificacion de seguridad del borde
+tests/                 24 casos de prueba, 101 funciones
+docs/                  RESULTADOS, EVIDENCIAS, capturas y borrador del informe
 ```
 
 ---
 
-## Dos decisiones que conviene leer antes de tocar el código
+## Decisiones que conviene leer antes de tocar el código
 
-### El modelo vive en dos lugares, a propósito
+**El modelo vive en dos lugares.** La EP2 decidió (D2) que va dentro de la API,
+en memoria; la pauta de la EP3 pide desplegarlo en SageMaker. `scorer.py`
+implementa los dos backends con la misma interfaz
+(`SCORER_BACKEND=local|sagemaker`) para medir la diferencia. El lado en memoria
+está medido (p99 de 4,5 ms). Para el de SageMaker, ver la nota del issue #3 en
+[docs/EVIDENCIAS.md](docs/EVIDENCIAS.md).
 
-La EP2 decidió (D2) que el modelo va **dentro** de la API, en memoria, porque un
-endpoint de SageMaker agrega un salto de red que se come el presupuesto de
-latencia. La pauta de la EP3 exige desplegar el modelo **en SageMaker**, con
-endpoints configurados.
+**RabbitMQ en la demo, Kinesis en el diseño.** La pauta nombra RabbitMQ o
+Kafka. `publisher.py` aísla el transporte, así que cambiarlo no toca la API.
 
-No es una contradicción que haya que esconder: es un resultado que se puede
-medir. `scorer.py` implementa los dos backends con la misma interfaz:
+**Autenticación por API key en local, mTLS en AWS.** En la EP2 la pasarela se
+autentica con certificado en el ALB. En local, Caddy termina TLS 1.3 y la API
+exige `X-API-Key`. La cuota se aplica por cliente autenticado, que es lo que en
+AWS sería la identidad del certificado.
 
-```bash
-SCORER_BACKEND=local                                   # modelo en memoria
-SCORER_BACKEND=sagemaker SAGEMAKER_ENDPOINT=<nombre>   # endpoint de SageMaker
-```
-
-Corre `load/locustfile.py` contra los dos y pon las tablas de percentiles una al
-lado de la otra. Eso convierte el supuesto de la EP2 en evidencia, que es
-exactamente lo que la pauta pide cuando dice «justifican decisiones de
-implementación y resultados obtenidos».
-
-### El bus de eventos es RabbitMQ en la demo y Kinesis en el diseño
-
-La EP2 eligió Kinesis (D15) por el reproceso de 7 días y el orden por usuario.
-La pauta de la EP3 nombra RabbitMQ o Kafka. El tramo asíncrono que se demuestra
-usa RabbitMQ porque es casi gratis y se levanta en un contenedor;
-`publisher.py` aísla el transporte, así que cambiarlo no toca a `decision-api`.
-El informe mantiene Kinesis como la elección de diseño y la comparación entre
-ambos ya está escrita en la EP2.
-
----
-
-## Pruebas
-
-```bash
-pytest                              # 64 funciones, 17 casos
-pytest --cov=src --cov-report=term  # con cobertura
-pytest tests/test_policy.py -v      # un grupo
-```
-
-Los casos están numerados CP-01 a CP-17 —uno por clase de prueba, 64 funciones
-en total— y cada clase dice en su docstring qué sección de la EP2 o de la pauta
-cubre, para que la trazabilidad del informe sea copiar y pegar.
-
-Estado al 22-11-2026: **64 pasan, 0 fallan**, y `ruff check` sin hallazgos.
-
-### Carga
-
-```bash
-# interfaz web
-locust -f load/locustfile.py --host http://localhost:8000
-
-# 116 usuarios (el pico del caso) por 3 minutos, con CSV para el informe
-locust -f load/locustfile.py --host http://localhost:8000 \
-       --headless -u 116 -r 20 -t 3m --csv reports/carga
-```
-
----
-
-## Despliegue en AWS
-
-```bash
-pip install boto3 sagemaker
-aws configure   # o variables de entorno
-
-python -m src.training.sagemaker_deploy \
-  --role-arn arn:aws:iam::<cuenta>:role/<rol-sagemaker> \
-  --data data/creditcard.csv
-```
-
-Deja un endpoint Serverless Inference: escala solo y no cobra instancia
-encendida. Capturas que conviene tomar en el momento:
-
-- la pantalla del endpoint en la consola de SageMaker
-- el log del training job en CloudWatch
-- las métricas `Invocations` y `ModelLatency` del endpoint
-
-**Borra el endpoint cuando termines de grabar la demostración.** Un endpoint
-olvidado consume crédito todos los días.
+**Si algo falla, se degrada; no se cae.** Si falla Redis, la decisión sale
+degradada y nunca se aprueba a ciegas. Si falla la idempotencia, se evalúa como
+nueva. Si falla RabbitMQ, el evento queda en un búfer. Si falta el modelo, todo
+va a revisión.
 
 ---
 
 ## Configuración
 
 Todo por variables de entorno; ningún secreto en el código ni en la imagen
-(EP2 sección 8.2). Valores en `config.py`, plantilla en `.env.example`.
+(EP2 sección 8.2). Plantilla comentada en `.env.example`.
 
 | Variable | Por omisión | Para qué |
 |---|---|---|
+| `API_KEYS` | — | Claves de clientes, `cliente:clave,...`. Sin claves, `/v1/score` responde 401 |
+| `FEATURE_STORE` | `auto` | `redis`, `memory` o `auto` (Redis si responde) |
 | `SCORER_BACKEND` | `local` | `local` o `sagemaker` |
-| `MODEL_PATH` | `artifacts/model.json` | Artefacto del modelo |
-| `SAGEMAKER_ENDPOINT` | — | Nombre del endpoint |
-| `REDIS_URL` | `redis://localhost:6379/0` | Feature store |
+| `MODEL_PATH` | `artifacts/model.json` | Artefacto del modelo, verificado por SHA-256 |
+| `REDIS_URL` / `REDIS_TIMEOUT_MS` | `redis://localhost:6379/0` / `50` | Feature store e idempotencia |
 | `AMQP_URL` | `amqp://guest:guest@localhost:5672/` | Bus de eventos |
 | `INTERNAL_BUDGET_MS` | `60` | Corte interno antes del timeout de 80 ms |
-| `THRESHOLD_REVIEW` | `0.45` | Score desde el que se revisa |
-| `THRESHOLD_REJECT` | `0.80` | Score desde el que se rechaza |
-| `RATE_LIMIT_RPS` | `200` | Solicitudes sostenidas por cliente |
-| `RATE_LIMIT_BURST` | `400` | Ráfaga tolerada |
+| `THRESHOLD_REVIEW` / `THRESHOLD_REJECT` | `0.45` / `0.80` | Umbrales de la política |
+| `RATE_LIMIT_RPS` / `RATE_LIMIT_BURST` | `200` / `400` | Cuota por cliente y por proceso |
+| `TRUST_PROXY_HEADERS` | `false` | Usar `X-Forwarded-For` solo detrás de un proxy propio |
 
 ---
 
-## Lo que falta
+## Fuera de alcance de este repositorio
 
-Esto es el esqueleto, no la entrega. Queda por hacer:
-
-- entrenar con el dataset real y reportar precision, recall, F1 y PR-AUC
-- desplegar en AWS y capturar las evidencias
-- correr la carga contra los dos backends y comparar
-- el informe técnico de 10 páginas
-
-`docs/EVIDENCIAS.md` lleva la cuenta punto por punto.
+El despliegue en AWS (endpoint de SageMaker, CloudWatch, URL pública) no está
+ejecutado. Lo que falta y cómo hacerlo está en
+[docs/EVIDENCIAS.md](docs/EVIDENCIAS.md). **Si lo despliegan, borren el
+endpoint al terminar:** uno olvidado consume crédito todos los días.

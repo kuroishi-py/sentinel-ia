@@ -1,40 +1,28 @@
 # Mapa de evidencias · EP3 ITY1102
 
-Cada punto de la pauta, qué lo cubre en este repositorio y qué falta capturar.
-Se actualiza a medida que avanza el trabajo: lo que está en `[ ]` no existe
-todavía.
+Cada punto de la pauta, qué lo cubre en este repositorio y dónde está la
+evidencia. Los números están en [RESULTADOS.md](RESULTADOS.md) y los archivos
+crudos en [evidencias/](evidencias/).
 
-Leyenda: `[x]` hecho · `[~]` el código está, falta ejecutarlo y capturar · `[ ]` pendiente
+Leyenda: `[x]` hecho y verificado en local · `[aws]` falta la parte que se
+despliega en AWS · `[ ]` pendiente del equipo
+
+Estado al 27-11-2026: **todo lo que corre en local está hecho y verificado.**
+Quedan las piezas de AWS (SageMaker, CloudWatch, URL pública) y el informe en
+PDF.
 
 ---
 
-## Trabajo pendiente
+## Decisión del issue #1: contrato de features
 
-Está como issues, en el milestone
-[EP3 - entrega semana 16](https://github.com/kuroishi-py/sentinel-ia/milestone/1).
-Tómalos de ahí y asígnate el que vayas a hacer, para que no se pisen dos
-personas en lo mismo.
+**Opción C, dos modelos.** El dataset de la ULB da métricas reales, pero sus
+features son PCA: no se pueden servir (la pasarela no manda componentes
+principales) y su explicación no sirve para decidir. El modelo de servicio usa
+las 11 features del diseño y se entrena con una historia simulada cuyas features
+calcula **el mismo código que la API** (`compute_features`). RT2 se cumple por
+construcción, y CP-20b lo verifica transacción por transacción.
 
-| # | Tarea | Etiquetas |
-|---|---|---|
-| [1](https://github.com/kuroishi-py/sentinel-ia/issues/1) | Decidir el contrato de features: PCA vs las 11 del diseño | `bloqueante` `modelo` |
-| [11](https://github.com/kuroishi-py/sentinel-ia/issues/11) | Confirmar que la pasarela opera en sa-east-1 | `bloqueante` `informe` |
-| [2](https://github.com/kuroishi-py/sentinel-ia/issues/2) | Entrenar con el dataset real y reportar métricas | `modelo` `evidencia` |
-| [3](https://github.com/kuroishi-py/sentinel-ia/issues/3) | Desplegar el endpoint Serverless de SageMaker | `despliegue` `evidencia` |
-| [4](https://github.com/kuroishi-py/sentinel-ia/issues/4) | Comparar p99: modelo en memoria vs endpoint | `testing` `informe` |
-| [5](https://github.com/kuroishi-py/sentinel-ia/issues/5) | Tramo asíncrono con RabbitMQ y su evidencia | `despliegue` `evidencia` |
-| [6](https://github.com/kuroishi-py/sentinel-ia/issues/6) | Carga a 116 tx/s con p50, p95 y p99 | `testing` `evidencia` |
-| [7](https://github.com/kuroishi-py/sentinel-ia/issues/7) | Capturar logs y métricas de CloudWatch | `despliegue` `evidencia` |
-| [8](https://github.com/kuroishi-py/sentinel-ia/issues/8) | Dashboard con URL funcional | `despliegue` `evidencia` |
-| [9](https://github.com/kuroishi-py/sentinel-ia/issues/9) | Seguridad desplegada: TLS y autenticación | `despliegue` |
-| [10](https://github.com/kuroishi-py/sentinel-ia/issues/10) | Informe técnico de 10 páginas | `informe` |
-| [12](https://github.com/kuroishi-py/sentinel-ia/issues/12) | Revisar retroalimentación del docente de la EP2 | `informe` `equipo` |
-| [13](https://github.com/kuroishi-py/sentinel-ia/issues/13) | Agregar al equipo como colaboradores | `equipo` |
-
-Los dos `bloqueante` van primero: el 1 porque de él dependen el entrenamiento,
-el endpoint y la parte de interpretabilidad del informe; el 11 porque si la
-pasarela no está en sa-east-1, el presupuesto de latencia del diseño cambia y
-hay decisiones que revisar.
+Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
 
 ---
 
@@ -42,36 +30,44 @@ hay decisiones que revisar.
 
 ### 1.1 Implementación y despliegue del modelo · IE1, IE2
 
-- `[~]` **Modelo implementado: tipo, framework, entrenamiento, dataset, hiperparámetros**
-  → `src/training/train.py`. Los hiperparámetros quedan en `artifacts/metadata.json`.
-  **Falta:** entrenar con el dataset real, no con `--synthetic`.
-- `[~]` **Despliegue en cloud con endpoints configurados**
-  → `src/training/sagemaker_deploy.py`, endpoint Serverless Inference.
-  **Falta:** ejecutarlo y capturar la consola de SageMaker.
+- `[x]` **Modelo implementado: tipo, framework, entrenamiento, dataset, hiperparámetros**
+  - Servicio: `src/training/simulate.py` y `train.py --simulated`, con
+    `artifacts/metadata.json` (hiperparámetros, partición, restricciones
+    monotónicas) y `artifacts/metrics.json`.
+  - Benchmark real: `artifacts/benchmark_ulb/`.
+- `[x]` **Endpoint configurado (local)**
+  - `POST /v1/score`, por TLS en `https://localhost:8443`.
+  - Captura: [01_swagger.png](evidencias/01_swagger.png).
+- `[aws]` **Despliegue en cloud**
+  - `src/training/sagemaker_deploy.py` sigue listo, pero no se ejecutó.
+  - Ojo: hoy entrenaría el modelo de la ULB, no el de servicio.
 
 ### 1.2 Plataforma AIaaS e infraestructura · IE4, IE5
 
-- `[~]` **SageMaker: configuración, instancias, auto-scaling, endpoints**
-  → `sagemaker_deploy.py`: training job en `ml.m5.xlarge`, endpoint serverless
-  con `memory_size_in_mb=2048` y `max_concurrency=20`.
-  **Falta:** capturas de la configuración y del endpoint activo.
-- `[~]` **Infraestructura mínima operativa**
-  Los cuatro elementos que pide la pauta: servidor AWS `[ ]`, modelo ML
-  funcional `[~]`, dataset `[ ]`, dashboard `[x]` (`dashboard/app.py`).
-- `[~]` **Verificación de escalabilidad: pruebas de carga**
-  → `load/locustfile.py`, con los objetivos del caso ya codificados.
-  **Falta:** correrla y exportar el CSV.
-- `[x]` **Análisis de costos** → Anexo F de la EP2, ya entregado.
-- `[ ]` **Evidencias: logs y métricas de CloudWatch**
-  Depende de que el sistema esté desplegado.
+- `[aws]` **SageMaker: configuración, instancias, auto-scaling, endpoints.**
+- `[x]` **Infraestructura mínima operativa (en local)**
+  - Modelo funcional: `artifacts/model.json`, verificado por SHA-256.
+  - Dataset: simulado, más el de la ULB.
+  - Dashboard: `https://localhost:8444`.
+- `[x]` **Verificación de escalabilidad: pruebas de carga**
+  - k6 y Locust a 116 tx/s, y capacidad de una tarea de 1 vCPU.
+  - [RESULTADOS.md §2](RESULTADOS.md#2-rendimiento) ·
+    [carga_k6_pico.txt](evidencias/carga_k6_pico.txt) ·
+    [carga_locust_pico_stats.csv](evidencias/carga_locust_pico_stats.csv).
+- `[x]` **Análisis de costos.** Anexo F de la EP2, más las oportunidades
+  medidas en [RESULTADOS.md §4](RESULTADOS.md#4-oportunidades-de-optimización).
+- `[aws]` **Evidencias: logs y métricas de CloudWatch.**
+  - En local: logs JSON de cada servicio (`docker compose logs`) y
+    [metricas_prometheus.txt](evidencias/metricas_prometheus.txt).
 
 ### 1.3 Integración de servicios · IE7
 
 - `[x]` **APIs REST: arquitectura y endpoints**
-  → `POST /v1/score`, `GET /health/live`, `GET /health/ready`, `GET /metrics`.
+  - `POST /v1/score`, `GET /health/live`, `GET /health/ready`, `GET /metrics`
+    y `GET /v1/stats`.
 - `[x]` **Documentación Swagger/OpenAPI**
-  → `/docs` y `/openapi.json`, que FastAPI genera. Verificado por CP-13.
-  **Falta:** la captura de Swagger UI para el informe.
+  - `/docs` y `/openapi.json`, con el esquema de seguridad `X-API-Key`.
+  - Verificado por CP-13 y CP-18 · [01_swagger.png](evidencias/01_swagger.png).
 
 ---
 
@@ -79,29 +75,50 @@ hay decisiones que revisar.
 
 ### 2.1 Implementación y despliegue del modelo · IE1, IE2
 
-- `[~]` **Integración en aplicación empresarial con interpretabilidad**
-  → `dashboard/app.py` muestra la contribución SHAP de cada feature junto al
-  caso; `src/shap_worker/main.py` la calcula fuera de la ruta crítica.
-- `[ ]` **Capturas del modelo desplegado y funcionando**
+- `[x]` **Integración en aplicación empresarial con interpretabilidad**
+  - Cada revisión o rechazo llega por RabbitMQ a shap-worker, que lo explica con
+    TreeSHAP.
+  - El dashboard lo muestra en lenguaje del analista: "compra en el extranjero,
+    dispositivo nuevo, comercio con 9,6% de fraude histórico".
+  - Capturas: [02_dashboard_toma_de_cuenta.png](evidencias/02_dashboard_toma_de_cuenta.png),
+    [04_dashboard_prueba_de_tarjeta.png](evidencias/04_dashboard_prueba_de_tarjeta.png)
+    y [05_dashboard_casos.png](evidencias/05_dashboard_casos.png).
+- `[x]` **Capturas del modelo funcionando (en local)**
+  - [03_dashboard_calidad_modelo.png](evidencias/03_dashboard_calidad_modelo.png).
+  - `[aws]` Faltan las de SageMaker.
 
 ### 2.2 Integración de servicios · IE7
 
 - `[x]` **Flujo de comunicación entre componentes distribuidos**
-  → `publisher.py` publica en RabbitMQ, `shap_worker` consume. La interfaz de
-  administración en `:15672` sirve de captura.
-- `[x]` **Seguridad: rate limiting** → `ratelimit.py`, probado por CP-09, CP-10 y CP-17.
-  Es el control que faltaba en la EP2.
-- `[x]` **Seguridad: plan de autenticación y encriptación TLS** → EP2 sección 8.2.
-  **Falta:** la parte que se demuestre desplegada (mTLS o TLS en el ALB).
-- `[x]` **Diagrama de secuencia** → Figura 6 de la EP2, se reusa sin cambios.
-- `[~]` **Pruebas de interoperabilidad**
-  → `tests/test_api.py` cubre la API completa. **Falta:** la prueba extremo a
-  extremo con RabbitMQ y el worker corriendo de verdad.
+  - Caddy (TLS) → decision-api → Redis (features) → RabbitMQ `decision.v1` →
+    shap-worker → caso → dashboard.
+  - Capturas: [06_rabbitmq_cola_shap_cases.png](evidencias/06_rabbitmq_cola_shap_cases.png)
+    y [07_rabbitmq_exchange_decision_v1.png](evidencias/07_rabbitmq_exchange_decision_v1.png)
+    (116 msg/s durante la carga).
+- `[x]` **Seguridad: autenticación**
+  - API key por cliente (`X-API-Key`, comparación de tiempo constante) y cuota
+    también para quien no se autentica.
+  - CP-18 · [seguridad_tls_autenticacion.txt](evidencias/seguridad_tls_autenticacion.txt).
+- `[x]` **Seguridad: encriptación TLS**
+  - Caddy en el borde solo negocia TLS 1.3 (rechaza 1.2), con HSTS.
+  - `/metrics` y `/v1/stats` no se ven desde afuera.
+  - Verificado por CP-23 y por `scripts/verificar_seguridad.py`.
+- `[x]` **Seguridad: rate limiting**
+  - Token bucket por cliente autenticado: CP-09, CP-10, CP-17 y CP-18.
+  - Bajo carga: 26.357 respuestas 429 sin errores
+    ([RESULTADOS.md §2.3](RESULTADOS.md#23-rate-limiting-bajo-carga)).
+- `[x]` **Diagrama de secuencia.** Figura 6 de la EP2. La implementación sigue
+  ese orden; el único agregado es la autenticación al inicio.
+- `[x]` **Pruebas de interoperabilidad**
+  - CP-23, de punta a punta contra el sistema levantado.
+  - [pruebas_e2e.txt](evidencias/pruebas_e2e.txt).
 
 ### 2.3 Testing y calidad · IE10
 
-- `[x]` **Mínimo 10 casos de prueba** → 17 casos, CP-01 a CP-17, implementados en
-  64 funciones de test. Al 22-11-2026 pasan las 64.
+- `[x]` **Mínimo 10 casos de prueba**
+  - 24 casos (CP-01 a CP-23, más CP-20b) en 101 funciones: 95 unitarias y de
+    integración, y 6 de punta a punta.
+  - [pruebas_unitarias_integracion.txt](evidencias/pruebas_unitarias_integracion.txt).
 
   | Caso | Qué verifica | Archivo |
   |---|---|---|
@@ -119,46 +136,84 @@ hay decisiones que revisar.
   | CP-12 | p50, p95 y p99 se calculan bien | `test_features_telemetry.py` |
   | CP-13 | La respuesta cumple el contrato de la EP2 | `test_api.py` |
   | CP-14 | Un PAN en caliente da 422, no 500 | `test_api.py` |
-  | CP-15 | Idempotencia extremo a extremo | `test_api.py` |
+  | CP-15 | Idempotencia de punta a punta | `test_api.py` |
   | CP-16 | Health checks y `/metrics` responden | `test_api.py` |
   | CP-17 | La API devuelve 429 al pasar la cuota | `test_api.py` |
+  | CP-18 | `/v1/score` exige API key; probar claves tiene cuota | `test_security_resilience.py` |
+  | CP-19 | Si Redis falla, se pierde la idempotencia, no el pago | `test_security_resilience.py` |
+  | CP-20 | Ventanas de 1 h y 24 h, dispositivo nuevo y paridad Redis/memoria | `test_model_features.py` |
+  | CP-20b | El entrenamiento ve las mismas features que la API | `test_model_features.py` |
+  | CP-21 | Modelo servido: hash, contrato, comportamiento y monotonía | `test_model_features.py` |
+  | CP-22 | La explicación SHAP es exacta y nombra las señales del fraude | `test_model_features.py` |
+  | CP-23 | Interoperabilidad: TLS → API → Redis → RabbitMQ → worker → caso | `test_e2e.py` |
 
-- `[~]` **Latencia p50, p95, p99, throughput y tasa de errores**
-  → `telemetry.py` los expone en `/metrics` y Locust los reporta.
-  **Falta:** correr la carga y pegar los números.
-- `[~]` **Pruebas de carga con JMeter o Locust** → `load/locustfile.py`.
-- `[~]` **Métricas del modelo: accuracy, precision, recall, F1**
-  → `train.py` las calcula y agrega PR-AUC y la tasa de falsos positivos sobre
-  transacciones legítimas, que es la que se compara con el 40% del motor de
-  reglas. **Falta:** entrenar con datos reales.
-- `[ ]` **Oportunidades de optimización**
-  Las de costo están en la EP2 sección 7.5. Las de rendimiento salen después de
-  medir.
+- `[x]` **Latencia p50, p95 y p99, throughput y tasa de errores**
+  - [RESULTADOS.md §2.1](RESULTADOS.md#21-pico-del-caso-116-txs-durante-3-minutos).
+- `[x]` **Pruebas de carga con JMeter o Locust**
+  - Locust (`load/locustfile.py`) y k6 (`load/k6_pico.js`).
+- `[x]` **Métricas del modelo: accuracy, precision, recall y F1**
+  - Del modelo de servicio, del benchmark ULB y del motor de reglas, en
+    [RESULTADOS.md §1.2](RESULTADOS.md#12-métricas-sobre-los-14-días-de-prueba-70732-tx-510-fraudes).
+- `[x]` **Oportunidades de optimización**
+  - [RESULTADOS.md §4](RESULTADOS.md#4-oportunidades-de-optimización).
 
 ---
 
 ## Aspectos formales
 
-- `[~]` **Repositorio GitHub con README, código y Dockerfile**
-  → `README.md`, `Dockerfile`, `docker-compose.yml`. **Falta:** crear el
-  repositorio remoto y subirlo.
-- `[ ]` **URLs funcionales de dashboard, APIs y modelo**
-  Tienen que seguir vivas el día de la revisión.
-- `[ ]` **Informe técnico en PDF, 10 páginas**
-  El arc42 de la EP2 tiene unas 40. Es un documento nuevo que cita al anterior,
-  no un recorte. Conviene decidir la estructura temprano.
-- `[x]` **Referencias APA, mínimo 2** → la EP2 trae unas doce.
-- `[x]` **Declaración de uso de IA** → plantilla de la EP2, hay que actualizarla
-  con lo que se use en esta etapa.
-- `[ ]` **Nomenclatura** → `EP3_Equipo7_Martinez_Farenden_PenayLillo_Pavon.pdf`.
-  En el Drive hay copias de la EP2 nombradas «EquipoX»: no repetirlo.
+- `[x]` **Repositorio GitHub con README, código y Dockerfile.** Además: CI en
+  `.github/workflows/ci.yml` (ruff, pytest con Redis, control del artefacto y
+  humo de la imagen).
+- `[aws]` **URLs funcionales de dashboard, APIs y modelo.** En local:
+  `https://localhost:8443` y `https://localhost:8444`.
+- `[ ]` **Informe técnico en PDF, 10 páginas.** Borrador con los números
+  medidos en [informe/EP3_informe_tecnico.md](informe/EP3_informe_tecnico.md);
+  las secciones de AWS quedan marcadas para completar.
+- `[x]` **Referencias APA, mínimo 2.** En el borrador del informe.
+- `[x]` **Declaración de uso de IA.** En el borrador del informe; hay que
+  revisarla.
+- `[ ]` **Nomenclatura:** `EP3_Equipo7_Martinez_Farenden_PenayLillo_Pavon.pdf`.
 
 ---
 
-## Pendientes que la propia EP2 dejó anotados
+## Pendientes del equipo
 
-- `[ ]` **Confirmar que la pasarela opera en sa-east-1.** La EP2 lo dejó como
-  riesgo con la mitigación «confirmarlo antes de la EP3» (sección 11.1). Si no
-  está en esa región, el presupuesto de latencia completo cambia.
-- `[ ]` **Revisar si hubo retroalimentación del docente en la EP2.** La pauta
-  pide incorporarla. En la EP1 no hubo observaciones.
+| # | Tarea | Estado |
+|---|---|---|
+| [1](https://github.com/kuroishi-py/sentinel-ia/issues/1) | Contrato de features | Decidido: opción C, arriba |
+| [2](https://github.com/kuroishi-py/sentinel-ia/issues/2) | Entrenar con el dataset real | Hecho (b916db4), ahora en `artifacts/benchmark_ulb/` |
+| [3](https://github.com/kuroishi-py/sentinel-ia/issues/3) | Endpoint Serverless de SageMaker | `[aws]` Ver nota abajo |
+| [4](https://github.com/kuroishi-py/sentinel-ia/issues/4) | p99 en memoria contra endpoint | `[aws]` El lado en memoria está medido: p99 de 4,5 ms |
+| [5](https://github.com/kuroishi-py/sentinel-ia/issues/5) | Tramo asíncrono con RabbitMQ | Hecho: CP-23 y capturas 06 y 07 |
+| [6](https://github.com/kuroishi-py/sentinel-ia/issues/6) | Carga a 116 tx/s | Hecho: RESULTADOS §2 |
+| [7](https://github.com/kuroishi-py/sentinel-ia/issues/7) | CloudWatch | `[aws]` |
+| [8](https://github.com/kuroishi-py/sentinel-ia/issues/8) | Dashboard con URL | Funciona en local; falta la URL pública `[aws]` |
+| [9](https://github.com/kuroishi-py/sentinel-ia/issues/9) | TLS y autenticación | Hecho en local (Caddy TLS 1.3 + API key); en AWS: mTLS en el ALB |
+| [10](https://github.com/kuroishi-py/sentinel-ia/issues/10) | Informe de 10 páginas | Borrador en `docs/informe/` |
+| [11](https://github.com/kuroishi-py/sentinel-ia/issues/11) | Pasarela en sa-east-1 | `[ ]` Sigue abierto |
+| [12](https://github.com/kuroishi-py/sentinel-ia/issues/12) | Retroalimentación del docente de la EP2 | `[ ]` Revisar en AVA |
+| [13](https://github.com/kuroishi-py/sentinel-ia/issues/13) | Colaboradores | `[ ]` |
+
+### Nota para el issue #3 (SageMaker), revisada el 27-11-2026 sin ejecutar nada en AWS
+
+`sagemaker_deploy.py` tal como está no va a funcionar de punta a punta:
+
+1. Por omisión entrena con `data/creditcard.csv` (29 features PCA), pero
+   `inference.py` arma el vector con las 11 features del diseño. El endpoint
+   recibiría 11 valores para un modelo de 29.
+2. El training job ejecuta `src/training/train.py`, que no lee
+   `SM_CHANNEL_TRAIN` ni escribe en `SM_MODEL_DIR`: entrenaría datos sintéticos
+   y dejaría el modelo donde SageMaker no lo busca.
+
+Camino más corto: desplegar el **modelo de servicio**, que ya está entrenado y
+calza con `inference.py`, sin training job:
+
+```bash
+tar -czf model.tar.gz -C artifacts model.json
+aws s3 cp model.tar.gz s3://<bucket>/sentinel-ia/model.tar.gz
+python -m src.training.sagemaker_deploy --role-arn <rol> --skip-training \
+       --model-data s3://<bucket>/sentinel-ia/model.tar.gz
+```
+
+Riesgo a verificar: el contenedor usa XGBoost `1.7-1` y el modelo se guardó con
+2.1.3. Si no carga, usar un `framework_version` más nuevo o reentrenar con 1.7.

@@ -1,0 +1,21 @@
+# Interoperabilidad de punta a punta (CP-23) - 2026-11-27T01:28Z
+# Borde TLS (Caddy) -> decision-api -> Redis -> RabbitMQ -> shap-worker -> caso
+
+============================= test session starts =============================
+testpaths: tests
+collecting ... collected 101 items / 95 deselected / 6 selected
+
+tests/test_e2e.py::TestCP23Interoperabilidad::test_el_borde_solo_habla_tls_13 PASSED
+tests/test_e2e.py::TestCP23Interoperabilidad::test_los_endpoints_de_operacion_no_se_ven_desde_afuera PASSED
+tests/test_e2e.py::TestCP23Interoperabilidad::test_sin_clave_el_borde_no_deja_pasar PASSED
+tests/test_e2e.py::TestCP23Interoperabilidad::test_una_toma_de_cuenta_termina_en_un_caso_explicado PASSED
+tests/test_e2e.py::TestCP23Interoperabilidad::test_una_compra_normal_no_genera_caso PASSED
+tests/test_e2e.py::TestCP23Interoperabilidad::test_rabbitmq_tiene_la_cola_enlazada_y_un_consumidor PASSED
+
+====================== 6 passed, 95 deselected in 9.44s =======================
+
+# Caso que creo shap-worker para el ultimo rechazo de la toma de cuenta:
+{"id_tx": "tx-IQDCLZYWIFCTXMPXN4ZUMM5SNM", "decision": "REJECT", "score": 1.0, "amount": 390000.0, "merchant_id": "mrc_0280", "reason_codes": ["SCORE_ABOVE_REJECT"], "model_version": "v1.0.0-sim"}
+top_features: ['is_foreign_country', 'is_new_device', 'merchant_risk']
+aportes: {'is_foreign_country': 5.328, 'is_new_device': 4.297, 'merchant_risk': 2.629, 'tx_count_1h': 1.651, 'amount_vs_user_avg': 1.513, 'user_age_days': -1.111, 'hour_of_day': -0.6, 'amount_log': 0.567, 'amount_sum_24h': 0.459, 'distinct_merchants_24h': -0.162, 'tx_count_24h': 0.001}
+valores: {'amount_log': 12.874, 'amount_vs_user_avg': 6.243, 'tx_count_1h': 3.0, 'tx_count_24h': 3.0, 'amount_sum_24h': 730000.0, 'distinct_merchants_24h': 1.0, 'user_age_days': 30.0, 'merchant_risk': 0.095, 'is_foreign_country': 1.0, 'hour_of_day': 1.0, 'is_new_device': 1.0}

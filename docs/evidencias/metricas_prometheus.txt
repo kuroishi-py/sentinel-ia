@@ -1,0 +1,53 @@
+# HELP sentinel_requests_total Solicitudes de scoring atendidas.
+# TYPE sentinel_requests_total counter
+sentinel_requests_total 16704
+# HELP sentinel_decisions_total Decisiones por tipo.
+# TYPE sentinel_decisions_total counter
+sentinel_decisions_total{decision="APPROVE"} 16607
+sentinel_decisions_total{decision="REVIEW"} 59
+sentinel_decisions_total{decision="REJECT"} 38
+# HELP sentinel_degraded_total Decisiones marcadas como degradadas.
+# TYPE sentinel_degraded_total counter
+sentinel_degraded_total 0
+# HELP sentinel_budget_exceeded_total Solicitudes que excedieron el presupuesto interno de latencia.
+# TYPE sentinel_budget_exceeded_total counter
+sentinel_budget_exceeded_total 0
+# HELP sentinel_guard_rejected_total Solicitudes rechazadas por un guardrail de entrada.
+# TYPE sentinel_guard_rejected_total counter
+sentinel_guard_rejected_total 0
+# HELP sentinel_rate_limited_total Solicitudes rechazadas por cuota.
+# TYPE sentinel_rate_limited_total counter
+sentinel_rate_limited_total 0
+# HELP sentinel_idempotent_hit_total Respuestas repetidas por idempotencia.
+# TYPE sentinel_idempotent_hit_total counter
+sentinel_idempotent_hit_total 0
+# HELP sentinel_auth_rejected_total Solicitudes sin API key valida.
+# TYPE sentinel_auth_rejected_total counter
+sentinel_auth_rejected_total 0
+# HELP sentinel_store_error_total Fallas del store de idempotencia toleradas sin cortar el pago.
+# TYPE sentinel_store_error_total counter
+sentinel_store_error_total 0
+# HELP sentinel_latency_ms Latencia de /v1/score en milisegundos.
+# TYPE sentinel_latency_ms histogram
+sentinel_latency_ms_bucket{le="1"} 14152
+sentinel_latency_ms_bucket{le="2"} 16533
+sentinel_latency_ms_bucket{le="5"} 16692
+sentinel_latency_ms_bucket{le="10"} 16702
+sentinel_latency_ms_bucket{le="20"} 16704
+sentinel_latency_ms_bucket{le="30"} 16704
+sentinel_latency_ms_bucket{le="40"} 16704
+sentinel_latency_ms_bucket{le="60"} 16704
+sentinel_latency_ms_bucket{le="80"} 16704
+sentinel_latency_ms_bucket{le="100"} 16704
+sentinel_latency_ms_bucket{le="250"} 16704
+sentinel_latency_ms_bucket{le="500"} 16704
+sentinel_latency_ms_bucket{le="1000"} 16704
+sentinel_latency_ms_bucket{le="+Inf"} 16704
+sentinel_latency_ms_sum 14833.899
+sentinel_latency_ms_count 16704
+# HELP sentinel_events_published Eventos publicados en el bus.
+# TYPE sentinel_events_published gauge
+sentinel_events_published 16704
+# HELP sentinel_events_dropped Eventos descartados por bufer lleno.
+# TYPE sentinel_events_dropped gauge
+sentinel_events_dropped 0

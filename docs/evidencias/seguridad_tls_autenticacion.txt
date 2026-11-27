@@ -1,0 +1,16 @@
+# Seguridad del borde - 2026-11-27T01:25Z - python scripts/verificar_seguridad.py
+
+[OK] Version TLS negociada - TLSv1.3, TLS_AES_128_GCM_SHA256
+[OK] Certificado valido para el host - SAN ['localhost'], emisor Caddy Local Authority - ECC Intermediate
+[OK] TLS 1.2 rechazado - TLSV1_ALERT_PROTOCOL_VERSION
+[OK] Sin API key -> 401 - 401 ApiKey
+[OK] API key invalida -> 401 - 401
+[OK] API key valida -> 200 - {"id_tx":"tx-verificacion-seguridad","score":0.45187,"decision":"REVIEW","model_version":"v1.0.0-sim","reason_codes":["S
+[OK] HSTS - max-age=31536000
+[OK] X-Content-Type-Options
+[OK] Sin cabecera Server
+[OK] /metrics no se ve desde afuera - 404
+[OK] /v1/stats no se ve desde afuera - 404
+[OK] Health check publico para el balanceador - ready
+
+Todo en orden

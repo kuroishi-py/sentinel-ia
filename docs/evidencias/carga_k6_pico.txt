@@ -1,0 +1,12 @@
+# k6 · 116 tx/s de llegada constante · 3 min · contra la tarea (gunicorn, 2 workers) en la red de Docker
+# 2026-11-27T01:28Z · docker compose --profile carga run --rm k6
+
+k6 · SENTINEL-IA · llegada constante
+  solicitudes      20881  (116.0 req/s)
+  p50 1.84 ms  p90 2.33 ms  p95 2.63 ms  p99 4.51 ms  max 43.81 ms
+  errores          0.00%
+  degradadas       0
+  p99 < 100 ms     CUMPLE
+
+# /v1/stats del worker que respondio al final (handler = latency_ms; servidor = ServerTiming, solicitud completa)
+{"requests_total":16704,"decisions":{"APPROVE":16607,"REVIEW":59,"REJECT":38},"counters":{},"gauges":{"events_published":16704.0,"events_dropped":0.0},"latency_mean_ms":0.888,"latency":{"p50":0.847,"p95":1.205,"p99":2.035},"latency_server":{"p50":1.559,"p95":2.221,"p99":3.567},"rejected_rate":0.0,"error_rate":0.0,"model_version":"v1.0.0-sim","feature_store":"redis"}

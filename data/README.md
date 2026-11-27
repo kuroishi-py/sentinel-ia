@@ -13,7 +13,9 @@ corta. Son 284.807 transacciones con 0,172% de fraude, un desbalance parecido al
 Descárgalo a `data/creditcard.csv` y entrena:
 
 ```bash
-python -m src.training.train --data data/creditcard.csv --label Class
+python -m src.training.download_dataset
+python -m src.training.train --data data/creditcard.csv --label Class --drop Time \
+    --out artifacts/benchmark_ulb
 ```
 
 Una advertencia sobre este dataset: como las features están anonimizadas por
@@ -28,6 +30,20 @@ monto, tarjeta, dominio de correo, dispositivo, hora. Con ese sí se puede
 escribir «el rechazo se explica porque el dispositivo era nuevo y el monto
 superaba nueve veces el promedio del usuario», que es lo que la pauta pide
 cuando habla de interpretabilidad para la toma de decisiones.
+
+## Para el modelo de servicio
+
+No hace falta bajar nada. El modelo que responde `/v1/score` se entrena con una
+historia simulada que genera `src/training/simulate.py`, con las 11 features
+del diseño calculadas por el mismo código que usa la API (ver issue #1 y
+`docs/RESULTADOS.md`):
+
+```bash
+python -m src.training.train --simulated --model-version v1.0.0-sim
+```
+
+El resultado ya viene versionado en `artifacts/`. El dataset de la ULB queda
+como benchmark en `artifacts/benchmark_ulb/`.
 
 ## Para probar el pipeline
 
