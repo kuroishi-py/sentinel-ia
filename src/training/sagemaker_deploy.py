@@ -143,6 +143,16 @@ def production_variant(model_name: str, args) -> dict:
     return variant
 
 
+def put_file(s3, path: Path, bucket: str, key: str) -> None:
+    """Sube un archivo chico con una sola solicitud.
+
+    No se usa ``upload_file``: reparte la subida en hilos, y el Python 3.7 de la
+    terminal de AWS Academy se cae con "Segmentation fault" al cerrarlos
+    (27-11-2026). Los artefactos pesan pocos KB, asi que no hace falta.
+    """
+    s3.put_object(Bucket=bucket, Key=key, Body=path.read_bytes())
+
+
 def ensure_bucket(s3, bucket: str, region: str) -> None:
     try:
         s3.head_bucket(Bucket=bucket)
@@ -177,8 +187,8 @@ def deploy(args, session=None) -> str:
     ensure_bucket(s3, bucket, args.region)
     prefix = f"{args.prefix}/{version}/{stamp}"
     with tempfile.TemporaryDirectory() as tmp:
-        s3.upload_file(str(package(model, Path(tmp))), bucket, f"{prefix}/model.tar.gz")
-        s3.upload_file(str(package_code(Path(tmp))), bucket, f"{prefix}/sourcedir.tar.gz")
+        put_file(s3, package(model, Path(tmp)), bucket, f"{prefix}/model.tar.gz")
+        put_file(s3, package_code(Path(tmp)), bucket, f"{prefix}/sourcedir.tar.gz")
     model_uri = f"s3://{bucket}/{prefix}/model.tar.gz"
     code_uri = f"s3://{bucket}/{prefix}/sourcedir.tar.gz"
     logger.info("Modelo %s y handler subidos a s3://%s/%s/", version, bucket, prefix)

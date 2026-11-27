@@ -150,9 +150,9 @@ class FakeAwsSession:
             def head_bucket(self, **kwargs):
                 raise RuntimeError("no existe")
 
-            def upload_file(self, path, bucket, key):
-                with tarfile.open(path) as tar:
-                    session.uploaded[key] = tar.getnames()
+            def put_object(self, Bucket, Key, Body):  # noqa: N803 - nombres de la API de S3
+                with tarfile.open(fileobj=io.BytesIO(Body)) as tar:
+                    session.uploaded[Key] = tar.getnames()
 
             def get_waiter(self, name):
                 class Waiter:
