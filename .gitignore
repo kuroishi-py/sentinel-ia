@@ -8,19 +8,31 @@ venv/
 htmlcov/
 *.egg-info/
 
-# Artefactos del modelo: se regeneran con train.py y pesan.
-# metadata.json y metrics.json SI se versionan: son evidencia del informe.
+# Artefactos del modelo.
+# El modelo de servicio SI se versiona (1,2 MB): es el artefacto aprobado, con su
+# SHA-256, y sin el la API arranca con el scorer de respaldo. Se regenera con
+# `python -m src.training.train --simulated --model-version v1.0.0-sim` (semilla
+# fija: identico bit a bit en la misma plataforma; la CI compara metricas). Del benchmark de la ULB solo se versionan metricas y metadata:
+# su modelo no se sirve y el dataset no se sube.
 artifacts/*
 !artifacts/.gitkeep
+!artifacts/model.json
+!artifacts/model.json.sha256
 !artifacts/metadata.json
 !artifacts/metrics.json
+!artifacts/merchant_risk.json
+!artifacts/benchmark_ulb/
+artifacts/benchmark_ulb/*
+!artifacts/benchmark_ulb/metadata.json
+!artifacts/benchmark_ulb/metrics.json
 
 # Datasets: no se suben al repositorio.
 data/*
 !data/.gitkeep
 !data/README.md
 
-# Reportes de carga
+# Reportes de carga crudos (CSV, HTML, JSON). Los resumenes que van al informe
+# se copian a docs/evidencias/.
 reports/
 
 # Secretos y configuracion local

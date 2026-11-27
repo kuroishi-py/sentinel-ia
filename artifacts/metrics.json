@@ -1,100 +1,197 @@
 {
   "at_reject_threshold": {
     "threshold": 0.8,
-    "accuracy": 0.999508,
-    "precision": 0.87234,
-    "recall": 0.836735,
-    "f1": 0.854167,
-    "pr_auc": 0.878988,
-    "roc_auc": 0.978158,
+    "accuracy": 0.997893,
+    "precision": 0.870637,
+    "recall": 0.831373,
+    "f1": 0.850552,
+    "pr_auc": 0.917568,
+    "roc_auc": 0.995847,
     "confusion_matrix": {
-      "tn": 56852,
-      "fp": 12,
-      "fn": 16,
-      "tp": 82
+      "tn": 70159,
+      "fp": 63,
+      "fn": 86,
+      "tp": 424
     },
-    "false_positive_rate_on_legit": 0.000211
+    "false_positive_rate_on_legit": 0.000897
   },
   "at_review_threshold": {
     "threshold": 0.45,
-    "accuracy": 0.999491,
-    "precision": 0.848485,
-    "recall": 0.857143,
-    "f1": 0.852792,
-    "pr_auc": 0.878988,
-    "roc_auc": 0.978158,
+    "accuracy": 0.997483,
+    "precision": 0.796429,
+    "recall": 0.87451,
+    "f1": 0.833645,
+    "pr_auc": 0.917568,
+    "roc_auc": 0.995847,
     "confusion_matrix": {
-      "tn": 56849,
-      "fp": 15,
-      "fn": 14,
-      "tp": 84
+      "tn": 70108,
+      "fp": 114,
+      "fn": 64,
+      "tp": 446
     },
-    "false_positive_rate_on_legit": 0.000264
+    "false_positive_rate_on_legit": 0.001623
   },
   "sweep": [
     {
-      "threshold": 0.3,
-      "accuracy": 0.999438,
-      "precision": 0.823529,
-      "recall": 0.857143,
-      "f1": 0.84,
-      "pr_auc": 0.878988,
-      "roc_auc": 0.978158,
+      "threshold": 0.1,
+      "accuracy": 0.995448,
+      "precision": 0.626005,
+      "recall": 0.915686,
+      "f1": 0.743631,
+      "pr_auc": 0.917568,
+      "roc_auc": 0.995847,
       "confusion_matrix": {
-        "tn": 56846,
-        "fp": 18,
-        "fn": 14,
-        "tp": 84
+        "tn": 69943,
+        "fp": 279,
+        "fn": 43,
+        "tp": 467
       },
-      "false_positive_rate_on_legit": 0.000317
+      "false_positive_rate_on_legit": 0.003973
+    },
+    {
+      "threshold": 0.3,
+      "accuracy": 0.997116,
+      "precision": 0.756711,
+      "recall": 0.884314,
+      "f1": 0.815552,
+      "pr_auc": 0.917568,
+      "roc_auc": 0.995847,
+      "confusion_matrix": {
+        "tn": 70077,
+        "fp": 145,
+        "fn": 59,
+        "tp": 451
+      },
+      "false_positive_rate_on_legit": 0.002065
+    },
+    {
+      "threshold": 0.45,
+      "accuracy": 0.997483,
+      "precision": 0.796429,
+      "recall": 0.87451,
+      "f1": 0.833645,
+      "pr_auc": 0.917568,
+      "roc_auc": 0.995847,
+      "confusion_matrix": {
+        "tn": 70108,
+        "fp": 114,
+        "fn": 64,
+        "tp": 446
+      },
+      "false_positive_rate_on_legit": 0.001623
     },
     {
       "threshold": 0.5,
-      "accuracy": 0.999508,
-      "precision": 0.857143,
-      "recall": 0.857143,
-      "f1": 0.857143,
-      "pr_auc": 0.878988,
-      "roc_auc": 0.978158,
+      "accuracy": 0.997568,
+      "precision": 0.807273,
+      "recall": 0.870588,
+      "f1": 0.837736,
+      "pr_auc": 0.917568,
+      "roc_auc": 0.995847,
       "confusion_matrix": {
-        "tn": 56850,
-        "fp": 14,
-        "fn": 14,
-        "tp": 84
+        "tn": 70116,
+        "fp": 106,
+        "fn": 66,
+        "tp": 444
       },
-      "false_positive_rate_on_legit": 0.000246
+      "false_positive_rate_on_legit": 0.001509
     },
     {
       "threshold": 0.7,
-      "accuracy": 0.999508,
-      "precision": 0.87234,
-      "recall": 0.836735,
-      "f1": 0.854167,
-      "pr_auc": 0.878988,
-      "roc_auc": 0.978158,
+      "accuracy": 0.997809,
+      "precision": 0.850099,
+      "recall": 0.845098,
+      "f1": 0.847591,
+      "pr_auc": 0.917568,
+      "roc_auc": 0.995847,
       "confusion_matrix": {
-        "tn": 56852,
-        "fp": 12,
-        "fn": 16,
-        "tp": 82
+        "tn": 70146,
+        "fp": 76,
+        "fn": 79,
+        "tp": 431
       },
-      "false_positive_rate_on_legit": 0.000211
+      "false_positive_rate_on_legit": 0.001082
+    },
+    {
+      "threshold": 0.8,
+      "accuracy": 0.997893,
+      "precision": 0.870637,
+      "recall": 0.831373,
+      "f1": 0.850552,
+      "pr_auc": 0.917568,
+      "roc_auc": 0.995847,
+      "confusion_matrix": {
+        "tn": 70159,
+        "fp": 63,
+        "fn": 86,
+        "tp": 424
+      },
+      "false_positive_rate_on_legit": 0.000897
     },
     {
       "threshold": 0.9,
-      "accuracy": 0.999544,
-      "precision": 0.909091,
-      "recall": 0.816327,
-      "f1": 0.860215,
-      "pr_auc": 0.878988,
-      "roc_auc": 0.978158,
+      "accuracy": 0.998007,
+      "precision": 0.901961,
+      "recall": 0.811765,
+      "f1": 0.854489,
+      "pr_auc": 0.917568,
+      "roc_auc": 0.995847,
       "confusion_matrix": {
-        "tn": 56856,
-        "fp": 8,
-        "fn": 18,
-        "tp": 80
+        "tn": 70177,
+        "fp": 45,
+        "fn": 96,
+        "tp": 414
       },
-      "false_positive_rate_on_legit": 0.000141
+      "false_positive_rate_on_legit": 0.000641
     }
-  ]
+  ],
+  "test_rows": 70732,
+  "test_frauds": 510,
+  "recall_by_scenario_at_review": {
+    "ato": {
+      "frauds": 178,
+      "recall_at_review": 0.870787
+    },
+    "card_testing": {
+      "frauds": 275,
+      "recall_at_review": 0.858182
+    },
+    "new_account": {
+      "frauds": 57,
+      "recall_at_review": 0.964912
+    }
+  },
+  "baseline_rules": {
+    "rules": [
+      "amount_vs_user_avg > 3",
+      "is_foreign_country = 1",
+      "is_new_device = 1",
+      "tx_count_1h >= 3",
+      "madrugada en Chile (0 a 5 h)"
+    ],
+    "precision": 0.069808,
+    "recall": 0.941176,
+    "false_positive_rate_on_legit": 0.091083,
+    "share_of_alerts_that_are_false": 0.930192,
+    "alerts": 6876,
+    "confusion_matrix": {
+      "tn": 63826,
+      "fp": 6396,
+      "fn": 30,
+      "tp": 480
+    }
+  },
+  "global_importance_mean_abs_shap": {
+    "is_new_device": 2.801921,
+    "amount_log": 2.744498,
+    "merchant_risk": 2.652385,
+    "user_age_days": 2.400056,
+    "hour_of_day": 2.169883,
+    "tx_count_1h": 1.591914,
+    "amount_sum_24h": 1.524895,
+    "amount_vs_user_avg": 1.436021,
+    "is_foreign_country": 0.680166,
+    "distinct_merchants_24h": 0.160343,
+    "tx_count_24h": 0.117091
+  }
 }

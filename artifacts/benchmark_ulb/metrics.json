@@ -1,0 +1,100 @@
+{
+  "at_reject_threshold": {
+    "threshold": 0.8,
+    "accuracy": 0.999508,
+    "precision": 0.87234,
+    "recall": 0.836735,
+    "f1": 0.854167,
+    "pr_auc": 0.878988,
+    "roc_auc": 0.978158,
+    "confusion_matrix": {
+      "tn": 56852,
+      "fp": 12,
+      "fn": 16,
+      "tp": 82
+    },
+    "false_positive_rate_on_legit": 0.000211
+  },
+  "at_review_threshold": {
+    "threshold": 0.45,
+    "accuracy": 0.999491,
+    "precision": 0.848485,
+    "recall": 0.857143,
+    "f1": 0.852792,
+    "pr_auc": 0.878988,
+    "roc_auc": 0.978158,
+    "confusion_matrix": {
+      "tn": 56849,
+      "fp": 15,
+      "fn": 14,
+      "tp": 84
+    },
+    "false_positive_rate_on_legit": 0.000264
+  },
+  "sweep": [
+    {
+      "threshold": 0.3,
+      "accuracy": 0.999438,
+      "precision": 0.823529,
+      "recall": 0.857143,
+      "f1": 0.84,
+      "pr_auc": 0.878988,
+      "roc_auc": 0.978158,
+      "confusion_matrix": {
+        "tn": 56846,
+        "fp": 18,
+        "fn": 14,
+        "tp": 84
+      },
+      "false_positive_rate_on_legit": 0.000317
+    },
+    {
+      "threshold": 0.5,
+      "accuracy": 0.999508,
+      "precision": 0.857143,
+      "recall": 0.857143,
+      "f1": 0.857143,
+      "pr_auc": 0.878988,
+      "roc_auc": 0.978158,
+      "confusion_matrix": {
+        "tn": 56850,
+        "fp": 14,
+        "fn": 14,
+        "tp": 84
+      },
+      "false_positive_rate_on_legit": 0.000246
+    },
+    {
+      "threshold": 0.7,
+      "accuracy": 0.999508,
+      "precision": 0.87234,
+      "recall": 0.836735,
+      "f1": 0.854167,
+      "pr_auc": 0.878988,
+      "roc_auc": 0.978158,
+      "confusion_matrix": {
+        "tn": 56852,
+        "fp": 12,
+        "fn": 16,
+        "tp": 82
+      },
+      "false_positive_rate_on_legit": 0.000211
+    },
+    {
+      "threshold": 0.9,
+      "accuracy": 0.999544,
+      "precision": 0.909091,
+      "recall": 0.816327,
+      "f1": 0.860215,
+      "pr_auc": 0.878988,
+      "roc_auc": 0.978158,
+      "confusion_matrix": {
+        "tn": 56856,
+        "fp": 8,
+        "fn": 18,
+        "tp": 80
+      },
+      "false_positive_rate_on_legit": 0.000141
+    }
+  ]
+}

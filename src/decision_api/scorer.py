@@ -166,6 +166,13 @@ class ModelLoader:
 
         booster = xgb.Booster()
         booster.load_model(str(path))
+        # Un hilo por proceso. Por omision XGBoost abre un hilo OpenMP por
+        # nucleo para cada prediccion; con gunicorn en varios workers eso
+        # sobresuscribe la CPU, y la espera activa de OpenMP la consume. Para
+        # predecir una fila no hay nada que paralelizar: la concurrencia la dan
+        # los workers. La prueba de carga del 26-11-2026 lo mostro en Docker
+        # con 2 vCPU: p99 interno de 62 ms y /health/ready tardando segundos.
+        booster.set_param({"nthread": 1})
         version = self._read_version(path) or self._settings.model_version
 
         expected = len(self._settings.feature_names)
