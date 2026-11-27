@@ -177,9 +177,10 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
   `https://localhost:8443` y `https://localhost:8444`.
 - `[x]` **Informe técnico en PDF, 10 páginas**
   - Fuente: [informe/EP3_informe_tecnico.md](informe/EP3_informe_tecnico.md).
-  - El PDF lo genera `python scripts/generar_informe.py`. Los PDF no se
-    versionan y la portada se completa desde `docs/informe/portada.local.json`,
-    porque el repositorio es público.
+  - PDF de entrega:
+    [EP3_Equipo7_Martinez_Farenden_PenayLillo_Pavon.pdf](informe/EP3_Equipo7_Martinez_Farenden_PenayLillo_Pavon.pdf).
+  - Lo genera `python scripts/generar_informe.py`; la portada se completa desde
+    `docs/informe/portada.local.json`, que no se versiona.
   - Quedan marcados para completar los datos de AWS, la retroalimentación de la
     EP2 y la fecha.
 - `[x]` **Referencias APA, mínimo 2.** En el borrador del informe.

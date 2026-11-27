@@ -105,9 +105,12 @@ python scripts/verificar_seguridad.py   # TLS 1.3, API key, endpoints ocultos, H
 python scripts/generar_informe.py       # docs/informe/EP3_Equipo7_...pdf, 10 paginas
 ```
 
-Convierte `docs/informe/EP3_informe_tecnico.md` con Chrome o Edge headless, e
-informa cuántas páginas tiene y cuántos `[COMPLETAR]` quedan. Los nombres del
-equipo van en `docs/informe/portada.local.json`, que no se versiona (ver el
+El PDF de entrega está en
+[docs/informe/](docs/informe/EP3_Equipo7_Martinez_Farenden_PenayLillo_Pavon.pdf).
+El script lo regenera desde `docs/informe/EP3_informe_tecnico.md` con Chrome o
+Edge headless, e informa cuántas páginas tiene y cuántos `[COMPLETAR]` quedan.
+Los datos de la portada salen de `docs/informe/portada.local.json`, que no se
+versiona: sin ese archivo, la portada queda con `[COMPLETAR]` (ver el
 docstring del script).
 
 Son 24 casos (CP-01 a CP-23, más CP-20b) en 101 funciones; la tabla está en

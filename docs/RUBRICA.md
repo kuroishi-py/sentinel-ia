@@ -46,7 +46,7 @@ y "Ahora", el de esta versión.
 | 22 | Sistema con URLs funcionales | Formal | 80% | 80% · AWS | Funciona en `https://localhost:8443` y `:8444`; la URL pública es AWS |
 | 23 | Referencias APA (mínimo 2) | Formal | 100% | 100% | 6 referencias con DOI |
 | 24 | Declaración de uso de IA | Formal | 80% | 100% | Informe, sección final |
-| 25 | Nomenclatura `EP3_Equipo[N]_Apellidos.pdf` | Formal | 0% | 100% | `EP3_Equipo7_Martinez_Farenden_PenayLillo_Pavon.pdf` |
+| 25 | Nomenclatura `EP3_Equipo[N]_Apellidos.pdf` | Formal | 0% | 100% | `docs/informe/EP3_Equipo7_Martinez_Farenden_PenayLillo_Pavon.pdf` |
 | 26 | Incorporar la retroalimentación de entregas anteriores | Transversal | 30% | 30% | Depende de lo que el docente dejó en AVA sobre la EP2 (issue #12) |
 
 **Sin contar AWS**, los criterios evaluables quedan en el nivel máximo, salvo
@@ -87,7 +87,7 @@ revisión.
 | `docker-compose.yml` | 4, 11, 12 | Endurecido; healthchecks correctos; puertos de desarrollo solo en 127.0.0.1; servicios de carga en el perfil `carga` |
 | `deploy/Caddyfile` | 12 | TLS 1.3, HSTS, 404 para operación, log sin secretos |
 | `.env.example` | 12 | Sin secretos reales; cada variable comentada |
-| `.gitignore`, `.gitattributes` | 21 | El modelo aprobado se versiona y sus bytes no se tocan; PDF y portada fuera del repo público |
+| `.gitignore`, `.gitattributes` | 21 | El modelo aprobado se versiona y sus bytes no se tocan; se versiona solo el PDF de entrega, no la portada local |
 | `.github/workflows/ci.yml` | 15, 21 | ruff, pytest con Redis, control del artefacto, humo de la imagen |
 | `Makefile` | 21 | Atajos para todo el ciclo |
 | `pyproject.toml`, `requirements*.txt` | 21 | Versiones fijas; marcador `e2e`; `markdown` para el informe |
@@ -114,5 +114,5 @@ revisión.
 | `docs/EVIDENCIAS.md` | todos | Mapa de la pauta a la evidencia |
 | `docs/diagramas/*` | 11, 13 | Fuente `.puml` y PNG |
 | `docs/evidencias/*` | 7, 10, 14-17 | Capturas y salidas crudas fechadas |
-| `docs/informe/*` | 20, 23-25 | Fuente del informe y figuras; el PDF se genera |
+| `docs/informe/*` | 20, 23-25 | Fuente del informe, figuras y PDF de entrega |
 | `data/README.md` | 1 | Explica los dos datasets |

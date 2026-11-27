@@ -4,7 +4,7 @@ PDF: python scripts/generar_informe.py  (ver el docstring del script).
 Las cifras salen de docs/RESULTADOS.md y de docs/evidencias/: si se vuelve a
 medir, actualizar ambos. Lo que esta entre [COMPLETAR: ...] depende de AWS o
 del equipo. Los datos de la portada se reemplazan desde
-docs/informe/portada.local.json, que no se versiona (el repositorio es publico).
+docs/informe/portada.local.json, que no se versiona.
 -->
 
 # SENTINEL-IA · Evaluación Parcial 3

@@ -4,9 +4,9 @@ El markdown es la fuente; el PDF se regenera cada vez que cambian las cifras o
 alguien completa una seccion. Usa Chrome, Chromium o Edge en modo headless (por
 el protocolo DevTools) para imprimir con numero de pagina.
 
-La portada lleva datos del equipo que no se versionan porque el repositorio es
-publico. Si existe docs/informe/portada.local.json, cada par "texto": "valor"
-reemplaza ese texto en el informe. Ejemplo:
+La portada lleva datos del equipo que no estan en el markdown. Si existe
+docs/informe/portada.local.json, cada par "texto": "valor" reemplaza ese texto
+en el informe. Ejemplo:
 
     {
       "[COMPLETAR: integrantes]": "Nombre Apellido, ...",
@@ -19,7 +19,7 @@ Uso:
     python scripts/generar_informe.py [--salida ruta.pdf] [--navegador ruta]
 
 Por omision deja docs/informe/EP3_Equipo7_Martinez_Farenden_PenayLillo_Pavon.pdf
-(los PDF no se versionan) e imprime cuantas paginas tiene y cuantos
+(el PDF de entrega, que si se versiona) e imprime cuantas paginas tiene y cuantos
 [COMPLETAR] quedan.
 """
 

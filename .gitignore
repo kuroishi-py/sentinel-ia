@@ -45,8 +45,8 @@ reports/
 .idea/
 .vscode/
 
-# Informe: el PDF se regenera con scripts/generar_informe.py; la portada lleva
-# nombres del equipo y el repositorio es publico.
+# Informe: solo se versiona el PDF de entrega; la portada local queda fuera.
 docs/informe/*.pdf
+!docs/informe/EP3_Equipo7_Martinez_Farenden_PenayLillo_Pavon.pdf
 docs/informe/portada.local.json
 docs/informe/*.tmp.html
