@@ -36,8 +36,12 @@ LABEL org.opencontainers.image.title="SENTINEL-IA decision-api" \
       org.opencontainers.image.description="Scoring de fraude en tiempo real" \
       org.opencontainers.image.version="0.1.0"
 
+# OMP_NUM_THREADS=1: un hilo de OpenMP por proceso. La concurrencia la dan
+# los workers de gunicorn; sin esto, cada prediccion de XGBoost abre un hilo
+# por nucleo y los procesos se pelean la CPU (ver scorer.py).
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
+    OMP_NUM_THREADS=1 \
     PATH="/opt/venv/bin:$PATH"
 
 # Usuario sin privilegios: la EP2 lo exige por PCI-DSS y minimo privilegio.

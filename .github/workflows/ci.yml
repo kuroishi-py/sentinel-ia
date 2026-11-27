@@ -1,0 +1,63 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    services:
+      # Con Redis disponible corre tambien la prueba de paridad Redis/memoria (CP-20).
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 5
+    env:
+      REDIS_URL: redis://localhost:6379/15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Dependencias
+        run: pip install -r requirements.txt pytest==8.3.4 pytest-cov==6.0.0 httpx==0.28.1 ruff==0.8.6
+      - name: ruff
+        run: ruff check src tests load dashboard scripts
+      - name: pytest
+        run: pytest -v --cov=src --cov-report=term
+      - name: El artefacto versionado corresponde al entrenamiento actual
+        # Semilla fija: en la misma plataforma el modelo sale identico bit a bit.
+        # Entre Windows y Linux los arboles difieren en el ultimo decimal, asi
+        # que aqui se comparan las metricas con tolerancia. Si alguien cambia el
+        # simulador o el entrenamiento sin reentrenar, esto falla.
+        run: |
+          python -m src.training.train --simulated --model-version v1.0.0-sim --out /tmp/modelo
+          python - <<'PY'
+          import json
+          ref = json.load(open("artifacts/metrics.json"))["at_reject_threshold"]
+          new = json.load(open("/tmp/modelo/metrics.json"))["at_reject_threshold"]
+          for k in ("precision", "recall", "pr_auc"):
+              print(f"{k}: versionado {ref[k]:.4f} | reentrenado {new[k]:.4f}")
+              assert abs(ref[k] - new[k]) < 0.02, k
+          PY
+
+  imagen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker build
+        run: docker build -t sentinel-ia:ci .
+      - name: La API arranca y queda lista con el modelo versionado
+        run: |
+          docker run -d --name api -p 8000:8000 \
+            -e FEATURE_STORE=memory -e PUBLISHER_ENABLED=false -e API_KEYS=ci:clave-ci \
+            -v "$PWD/artifacts:/app/artifacts:ro" sentinel-ia:ci
+          for i in $(seq 1 30); do curl -sf localhost:8000/health/ready && break; sleep 2; done
+          curl -sf localhost:8000/health/ready | grep -q '"model_version":"v1.0.0-sim"'
+          curl -sf -X POST localhost:8000/v1/score -H 'X-API-Key: clave-ci' -H 'content-type: application/json' \
+            -d '{"id_tx":"tx-ci-humo-01","user_token":"usr_ci_0001","merchant_id":"mrc_0002","amount":19990,"currency":"CLP","country":"CL"}'

@@ -1,14 +1,22 @@
-# Entorno local completo: API, feature store, bus de eventos y worker.
+# Entorno local completo: borde TLS, API, feature store, bus de eventos, worker
+# de SHAP y dashboard.
 #
-# Es la version reducida del despliegue de la EP2 (seccion 7): Redis ocupa el
-# lugar de ElastiCache Valkey y RabbitMQ el de Kinesis. Sirve para desarrollar y
-# para grabar la demostracion sin gastar credito de AWS.
+# Es la version reducida del despliegue de la EP2 (seccion 7): Caddy hace de ALB
+# con TLS, Redis ocupa el lugar de ElastiCache Valkey y RabbitMQ el de Kinesis.
+# Sirve para desarrollar, para las pruebas de punta a punta y para grabar la
+# demostracion sin gastar credito de AWS.
 #
-#   docker compose up -d
+#   docker compose up -d --build
 #   docker compose logs -f worker
+#   docker compose --profile carga run --rm locust     # prueba de carga
 #   docker compose down -v
+#
+# La clave de la API sale de API_KEYS / SENTINEL_API_KEY (copia .env.example a
+# .env). Los valores por omision de abajo son SOLO para la demo local.
 
 name: sentinel-ia
+
+x-api-key: &api-key ${SENTINEL_API_KEY:-sentinel-demo-local}
 
 services:
   redis:
@@ -16,7 +24,7 @@ services:
     container_name: sentinel-redis
     command: redis-server --save "" --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -27,10 +35,10 @@ services:
     image: rabbitmq:3.13-management-alpine
     container_name: sentinel-rabbitmq
     ports:
-      - "5672:5672"
+      - "127.0.0.1:5672:5672"
       # Interfaz de administracion en http://localhost:15672 (guest/guest).
       # Sirve de captura para "comunicacion entre servicios distribuidos".
-      - "15672:15672"
+      - "127.0.0.1:15672:15672"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -39,17 +47,21 @@ services:
 
   api:
     build: .
+    image: sentinel-ia:local
     container_name: sentinel-api
     ports:
-      - "8000:8000"
+      # Solo para desarrollo y Swagger sin TLS. El camino de pagos es el proxy.
+      - "127.0.0.1:8000:8000"
     environment:
       SCORER_BACKEND: ${SCORER_BACKEND:-local}
       MODEL_PATH: /app/artifacts/model.json
-      MODEL_VERSION: ${MODEL_VERSION:-dev-0}
       SAGEMAKER_ENDPOINT: ${SAGEMAKER_ENDPOINT:-}
       AWS_REGION: ${AWS_REGION:-sa-east-1}
+      FEATURE_STORE: redis
       REDIS_URL: redis://redis:6379/0
       AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+      PUBLISHER_ENABLED: ${PUBLISHER_ENABLED:-true}
+      API_KEYS: ${API_KEYS:-pasarela:sentinel-demo-local}
       RATE_LIMIT_RPS: ${RATE_LIMIT_RPS:-200}
       RATE_LIMIT_BURST: ${RATE_LIMIT_BURST:-400}
       INTERNAL_BUDGET_MS: ${INTERNAL_BUDGET_MS:-60}
@@ -61,11 +73,19 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      # El worker declara la cola: si la API publica antes de que exista, los
+      # primeros eventos no tienen a donde ir.
+      worker:
+        condition: service_started
+    restart: unless-stopped
 
   worker:
-    build: .
+    image: sentinel-ia:local
     container_name: sentinel-shap-worker
     command: ["python", "-m", "src.shap_worker.main"]
+    # En Linux, la carpeta data/ es del usuario de la maquina: SENTINEL_UID=$(id -u)
+    # deja que el worker escriba los casos ahi. En Docker Desktop no hace falta.
+    user: "${SENTINEL_UID:-10001}"
     environment:
       MODEL_PATH: /app/artifacts/model.json
       AMQP_URL: amqp://guest:guest@rabbitmq:5672/
@@ -75,18 +95,100 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    # La imagen trae el healthcheck HTTP de la API; el worker no escucha HTTP.
+    # Si pierde RabbitMQ, el proceso termina y restart lo levanta de nuevo.
+    healthcheck:
+      disable: true
+    restart: unless-stopped
 
   dashboard:
-    build: .
+    image: sentinel-ia:local
     container_name: sentinel-dashboard
-    command: ["streamlit", "run", "dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    command: ["streamlit", "run", "dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--browser.gatherUsageStats=false"]
     ports:
-      - "8501:8501"
+      - "127.0.0.1:8501:8501"
     environment:
       API_URL: http://api:8000
+      SENTINEL_API_KEY: *api-key
     volumes:
       - ./dashboard:/app/dashboard:ro
       - ./artifacts:/app/artifacts:ro
       - ./data:/app/data:ro
     depends_on:
       - api
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  proxy:
+    image: caddy:2.8-alpine
+    container_name: sentinel-proxy
+    ports:
+      - "8443:8443"   # API por TLS 1.3
+      - "8444:8444"   # dashboard por TLS 1.3
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - api
+      - dashboard
+    restart: unless-stopped
+
+  # Prueba de carga desde dentro de la red, contra la tarea, como el balanceador.
+  # Medir desde la maquina en Windows agrega decenas de ms del lado del cliente.
+  locust:
+    image: locustio/locust:2.32.5
+    profiles: ["carga"]
+    working_dir: /mnt/sentinel
+    command:
+      - -f
+      - load/locustfile.py
+      - --host
+      - http://api:8000
+      - --headless
+      - -u
+      - "${USUARIOS:-116}"
+      - -r
+      - "20"
+      - -t
+      - "${DURACION:-3m}"
+      - --csv
+      - reports/carga_${PERFIL:-pico}
+      - --html
+      - reports/carga_${PERFIL:-pico}.html
+      - --only-summary
+    user: "${SENTINEL_UID:-10001}"
+    environment:
+      SENTINEL_API_KEY: *api-key
+      PERFIL: ${PERFIL:-pico}
+    volumes:
+      - ./load:/mnt/sentinel/load:ro
+      - ./src:/mnt/sentinel/src:ro
+      - ./reports:/mnt/sentinel/reports
+    depends_on:
+      - api
+
+  # La misma carga con k6 (Go, llegada constante): el cliente casi no suma
+  # latencia, asi que mide lo que veria la pasarela. Ver load/k6_pico.js.
+  k6:
+    image: grafana/k6:0.55.0
+    profiles: ["carga"]
+    working_dir: /mnt/sentinel
+    command: ["run", "--quiet", "load/k6_pico.js"]
+    user: "${SENTINEL_UID:-10001}"
+    environment:
+      API_URL: http://api:8000
+      SENTINEL_API_KEY: *api-key
+      TASA: ${TASA:-116}
+      DURACION: ${DURACION:-3m}
+    volumes:
+      - ./load:/mnt/sentinel/load:ro
+      - ./reports:/mnt/sentinel/reports
+    depends_on:
+      - api
+
+volumes:
+  caddy_data:

@@ -1,0 +1,49 @@
+# Borde TLS de SENTINEL-IA en local.
+#
+# Hace el papel del ALB-scoring de la EP2 (seccion 7.3 y 8.2): termina TLS 1.3,
+# reenvia a decision-api por la red interna y no deja pasar los endpoints de
+# operacion. El certificado lo firma la CA local de Caddy ("tls internal"); para
+# que curl o el navegador confien en el, exporta la raiz:
+#
+#   docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt reports/caddy-root.crt
+#   curl --cacert reports/caddy-root.crt https://localhost:8443/health/ready
+#
+# En AWS esto es el ALB con mTLS: la pasarela presenta un certificado en vez de
+# una API key. Aqui la autenticacion la hace la API con X-API-Key.
+{
+	local_certs
+	auto_https disable_redirects
+}
+
+# API de scoring
+https://localhost:8443 {
+	tls internal {
+		protocols tls1.3
+	}
+
+	# Metricas y estadisticas son de operacion: Prometheus y el dashboard las
+	# leen por la red interna. Desde afuera no existen (EP2 8.2: "el resto
+	# responde 404").
+	@operacion path /metrics /v1/stats
+	respond @operacion 404
+
+	reverse_proxy api:8000
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+}
+
+# Consola de Fraud Ops
+https://localhost:8444 {
+	tls internal {
+		protocols tls1.3
+	}
+	reverse_proxy dashboard:8501
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+}
