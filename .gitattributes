@@ -1,0 +1,10 @@
+# El modelo se verifica por SHA-256 al cargar: git no debe tocar sus bytes
+# (con core.autocrlf=true, un clon en Windows convertiria los saltos de linea
+# y la API rechazaria el artefacto).
+artifacts/** -text
+*.png binary
+
+# Archivos que se ejecutan dentro de contenedores Linux.
+Dockerfile text eol=lf
+deploy/Caddyfile text eol=lf
+*.sh text eol=lf
