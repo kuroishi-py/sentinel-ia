@@ -2,8 +2,9 @@
 
 Cómo se lleva SENTINEL-IA a AWS Academy (Learner Lab) para cubrir lo que la
 pauta pide en la nube: el modelo en un endpoint de SageMaker, el sistema con
-URLs públicas, y logs y métricas en CloudWatch. Todo se ejecuta desde **AWS
-CloudShell**, sin instalar nada en el computador.
+URLs públicas, y logs y métricas en CloudWatch. Todo se ejecuta desde la
+**terminal del Learner Lab** (o AWS CloudShell), que ya trae las credenciales,
+sin instalar nada en el computador.
 
 | Pieza | Qué queda | Punto de la pauta |
 |---|---|---|
@@ -30,10 +31,11 @@ CloudShell**, sin instalar nada en el computador.
 
 ## Pasos
 
-### 1. Abrir CloudShell
+### 1. Abrir la terminal
 
-Learner Lab → *Start Lab* → *AWS* (consola) → ícono de CloudShell. Región
-`us-east-1`.
+Learner Lab → *Start Lab*. La terminal está en la misma página (trae Python 3.7
+y la CLI de AWS con las credenciales del laboratorio). También sirve CloudShell
+desde la consola, en `us-east-1`.
 
 ### 2. Traer el repositorio
 
@@ -45,9 +47,12 @@ cd sentinel-ia
 ### 3. Endpoint de SageMaker
 
 ```bash
-pip3 install --user -q "sagemaker<3"
 python3 src/training/sagemaker_deploy.py --region us-east-1
 ```
+
+Solo necesita `boto3`: replica lo que hace el SDK de SageMaker para un
+`XGBoostModel` (código en S3 y variables `SAGEMAKER_*`), porque el SDK no se
+instala bien en el Python 3.7 de la terminal del laboratorio.
 
 Toma de 3 a 8 minutos. Termina con la tabla de paridad (score de la API frente
 al del endpoint, que deben coincidir) y el nombre del endpoint. Si Learner Lab

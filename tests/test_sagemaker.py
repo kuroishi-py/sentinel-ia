@@ -131,3 +131,86 @@ class TestCP25SageMaker:
         monkeypatch.setattr(sagemaker_deploy, "ARTIFACTS", altered)
         with pytest.raises(SystemExit, match="no coincide"):
             sagemaker_deploy.verified_model()
+
+
+class FakeAwsSession:
+    """Imita boto3.Session: registra cada llamada a S3 y a SageMaker."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str, dict]] = []
+        self.uploaded: dict[str, list[str]] = {}
+
+    def client(self, service: str):
+        session = self
+
+        class Client:
+            def get_caller_identity(self):
+                return {"Account": "123456789012"}
+
+            def head_bucket(self, **kwargs):
+                raise RuntimeError("no existe")
+
+            def upload_file(self, path, bucket, key):
+                with tarfile.open(path) as tar:
+                    session.uploaded[key] = tar.getnames()
+
+            def get_waiter(self, name):
+                class Waiter:
+                    def wait(self, **kwargs):
+                        return None
+
+                return Waiter()
+
+            def __getattr__(self, operation):
+                def call(**kwargs):
+                    session.calls.append((service, operation, kwargs))
+                    return {}
+
+                return call
+
+        return Client()
+
+
+class TestCP25DespliegueSinSdk:
+    """CP-25 (cont.): el despliegue con boto3 arma lo mismo que el SDK de SageMaker."""
+
+    def _args(self, **overrides):
+        values = {
+            "region": "us-east-1",
+            "role_arn": None,
+            "bucket": None,
+            "prefix": "sentinel-ia",
+            "endpoint_name": "sentinel-ia-prueba",
+            "memory": 2048,
+            "concurrency": 20,
+            "instance_type": None,
+            "image_uri": None,
+        }
+        values.update(overrides)
+        return type("Args", (), values)()
+
+    def test_endpoint_serverless_con_el_handler_y_el_modelo_verificado(self) -> None:
+        aws = FakeAwsSession()
+        name = sagemaker_deploy.deploy(self._args(), session=aws)
+        ops = {op: kwargs for _, op, kwargs in aws.calls}
+
+        container = ops["create_model"]["PrimaryContainer"]
+        assert name == "sentinel-ia-prueba"
+        assert ops["create_model"]["ExecutionRoleArn"] == "arn:aws:iam::123456789012:role/LabRole"
+        assert container["Image"] == "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-xgboost:1.7-1"
+        assert container["Environment"]["SAGEMAKER_PROGRAM"] == "inference.py"
+        assert container["Environment"]["SAGEMAKER_SUBMIT_DIRECTORY"].endswith("/sourcedir.tar.gz")
+        assert container["ModelDataUrl"].startswith("s3://sagemaker-us-east-1-123456789012/sentinel-ia/")
+        variant = ops["create_endpoint_config"]["ProductionVariants"][0]
+        assert variant["ServerlessConfig"] == {"MemorySizeInMB": 2048, "MaxConcurrency": 20}
+        assert ops["create_endpoint"]["EndpointConfigName"] == "sentinel-ia-prueba"
+
+        archives = {key.rsplit("/", 1)[-1]: names for key, names in aws.uploaded.items()}
+        assert archives == {"model.tar.gz": ["model.json"], "sourcedir.tar.gz": ["inference.py"]}
+
+    def test_endpoint_de_instancia_si_se_pide(self) -> None:
+        aws = FakeAwsSession()
+        sagemaker_deploy.deploy(self._args(instance_type="ml.m5.large"), session=aws)
+        variant = next(k for _, op, k in aws.calls if op == "create_endpoint_config")["ProductionVariants"][0]
+        assert variant["InstanceType"] == "ml.m5.large"
+        assert "ServerlessConfig" not in variant

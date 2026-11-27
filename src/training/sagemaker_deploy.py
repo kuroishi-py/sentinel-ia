@@ -22,7 +22,7 @@ Flujo:
     5. Envia las transacciones de artifacts/sagemaker_parity.json y compara el
        score del endpoint con el de la API.
 
-Uso (por ejemplo desde AWS CloudShell, con ``pip install sagemaker``):
+Uso (desde la terminal de AWS Academy o CloudShell; solo necesita boto3):
     python src/training/sagemaker_deploy.py --region us-east-1
     python src/training/sagemaker_deploy.py --region us-east-1 --instance-type ml.m5.large
     python src/training/sagemaker_deploy.py --region us-east-1 --check sentinel-ia-20261127-1600
@@ -30,7 +30,8 @@ Uso (por ejemplo desde AWS CloudShell, con ``pip install sagemaker``):
 
 Sin --role-arn se usa el rol LabRole de la cuenta (AWS Academy Learner Lab).
 
-Compatible con Python 3.9 (el de CloudShell): no importa nada de src/.
+Compatible con Python 3.7 (la terminal de AWS Academy): no importa nada de src/
+ni el SDK de SageMaker.
 """
 
 from __future__ import annotations
@@ -53,6 +54,8 @@ ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = ROOT / "artifacts"
 SOURCE_DIR = Path(__file__).resolve().parent  # src/training: trae inference.py
 FRAMEWORK_VERSION = "1.7-1"
+#: Cuentas de ECR de la imagen XGBoost administrada (sagemaker.image_uris).
+XGBOOST_IMAGE_ACCOUNTS = {"us-east-1": "683313688378", "us-west-2": "246618743249"}
 #: Diferencia tolerada entre el score de la API y el del endpoint. XGBoost 1.7
 #: (endpoint) y 2.1 (API) dan el mismo resultado salvo el redondeo de float32.
 TOLERANCE = 1e-4
@@ -97,62 +100,112 @@ def package(model: Path, workdir: Path) -> Path:
     return tarball
 
 
-def lab_role_arn(session) -> str:
-    account = session.boto_session.client("sts").get_caller_identity()["Account"]
-    return f"arn:aws:iam::{account}:role/LabRole"
+def package_code(workdir: Path) -> Path:
+    """sourcedir.tar.gz con el handler, como lo arma el SDK de SageMaker."""
+    tarball = workdir / "sourcedir.tar.gz"
+    with tarfile.open(tarball, "w:gz") as tar:
+        tar.add(SOURCE_DIR / "inference.py", arcname="inference.py")
+    return tarball
 
 
-def deploy(args) -> str:
-    import boto3
-    import sagemaker
-    from sagemaker.xgboost.model import XGBoostModel
+def image_uri(region: str, override: str | None = None) -> str:
+    if override:
+        return override
+    account = XGBOOST_IMAGE_ACCOUNTS.get(region)
+    if account is None:
+        raise SystemExit(f"Sin imagen XGBoost conocida para {region}: pasa --image-uri")
+    return f"{account}.dkr.ecr.{region}.amazonaws.com/sagemaker-xgboost:{FRAMEWORK_VERSION}"
 
-    session = sagemaker.Session(boto_session=boto3.Session(region_name=args.region))
-    role = args.role_arn or lab_role_arn(session)
-    bucket = args.bucket or session.default_bucket()
-    # timezone.utc y no datetime.UTC: CloudShell trae Python 3.9.
+
+def container_env(code_uri: str, region: str) -> dict:
+    """Las variables que fija el SDK para un XGBoostModel con entry_point.
+
+    El contenedor descarga sourcedir.tar.gz desde S3 y usa inference.py como
+    handler (model_fn, input_fn, predict_fn, output_fn).
+    """
+    return {
+        "SAGEMAKER_PROGRAM": "inference.py",
+        "SAGEMAKER_SUBMIT_DIRECTORY": code_uri,
+        "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
+        "SAGEMAKER_REGION": region,
+    }
+
+
+def production_variant(model_name: str, args) -> dict:
+    variant = {"VariantName": "AllTraffic", "ModelName": model_name}
+    if args.instance_type:
+        # Endpoint de instancia: sin arranque en frio, pero cobra por hora.
+        variant.update(InitialInstanceCount=1, InstanceType=args.instance_type, InitialVariantWeight=1.0)
+    else:
+        # Serverless: escala con las invocaciones hasta MaxConcurrency y baja a
+        # cero sin trafico. 2048 MB va alineado con la tarea de 2 GB de la EP2.
+        variant["ServerlessConfig"] = {"MemorySizeInMB": args.memory, "MaxConcurrency": args.concurrency}
+    return variant
+
+
+def ensure_bucket(s3, bucket: str, region: str) -> None:
+    try:
+        s3.head_bucket(Bucket=bucket)
+    except Exception:  # noqa: BLE001 - no existe o no es nuestro: se intenta crear
+        if region == "us-east-1":
+            s3.create_bucket(Bucket=bucket)
+        else:
+            s3.create_bucket(Bucket=bucket, CreateBucketConfiguration={"LocationConstraint": region})
+
+
+def deploy(args, session=None) -> str:
+    """Crea modelo, configuracion y endpoint solo con boto3.
+
+    No usa el SDK de SageMaker a proposito: la terminal de AWS Academy trae
+    Python 3.7 y el SDK no se instala bien ahi. Se replica lo que hace el SDK
+    para un XGBoostModel (codigo en S3 y variables SAGEMAKER_*).
+    """
+    if session is None:
+        import boto3
+
+        session = boto3.Session(region_name=args.region)
+    account = session.client("sts").get_caller_identity()["Account"]
+    role = args.role_arn or f"arn:aws:iam::{account}:role/LabRole"
+    bucket = args.bucket or f"sagemaker-{args.region}-{account}"
+    # timezone.utc y no datetime.UTC: la terminal de AWS Academy trae Python 3.7.
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")  # noqa: UP017
     name = args.endpoint_name or f"sentinel-ia-{stamp}"
 
     model = verified_model()
     version = model_version()
+    s3 = session.client("s3")
+    ensure_bucket(s3, bucket, args.region)
+    prefix = f"{args.prefix}/{version}/{stamp}"
     with tempfile.TemporaryDirectory() as tmp:
-        tarball = package(model, Path(tmp))
-        model_data = session.upload_data(str(tarball), bucket=bucket, key_prefix=f"{args.prefix}/{version}")
-    logger.info("Modelo %s subido a %s", version, model_data)
+        s3.upload_file(str(package(model, Path(tmp))), bucket, f"{prefix}/model.tar.gz")
+        s3.upload_file(str(package_code(Path(tmp))), bucket, f"{prefix}/sourcedir.tar.gz")
+    model_uri = f"s3://{bucket}/{prefix}/model.tar.gz"
+    code_uri = f"s3://{bucket}/{prefix}/sourcedir.tar.gz"
+    logger.info("Modelo %s y handler subidos a s3://%s/%s/", version, bucket, prefix)
 
-    sm_model = XGBoostModel(
-        model_data=model_data,
-        role=role,
-        entry_point="inference.py",
-        source_dir=str(SOURCE_DIR),
-        framework_version=FRAMEWORK_VERSION,
-        py_version="py3",
-        sagemaker_session=session,
-        name=name,
+    sm = session.client("sagemaker")
+    sm.create_model(
+        ModelName=name,
+        ExecutionRoleArn=role,
+        PrimaryContainer={
+            "Image": image_uri(args.region, args.image_uri),
+            "ModelDataUrl": model_uri,
+            "Environment": container_env(code_uri, args.region),
+        },
+        Tags=[{"Key": "model_version", "Value": version}],
     )
+    sm.create_endpoint_config(EndpointConfigName=name, ProductionVariants=[production_variant(name, args)])
+    sm.create_endpoint(EndpointName=name, EndpointConfigName=name)
+    kind = args.instance_type or f"serverless {args.memory} MB, concurrencia {args.concurrency}"
+    logger.info("Creando endpoint '%s' (%s). Toma de 3 a 10 minutos...", name, kind)
 
-    if args.instance_type:
-        # Endpoint de instancia: sin arranque en frio, pero cobra por hora.
-        logger.info("Desplegando endpoint '%s' en %s (toma de 5 a 10 minutos)", name, args.instance_type)
-        sm_model.deploy(initial_instance_count=1, instance_type=args.instance_type, endpoint_name=name)
-    else:
-        # Serverless: escala con las invocaciones hasta max_concurrency y baja a
-        # cero sin trafico. 2048 MB va alineado con la tarea de 2 GB de la EP2.
-        from sagemaker.serverless import ServerlessInferenceConfig
-
-        logger.info(
-            "Desplegando endpoint serverless '%s' (%d MB, concurrencia %d; toma de 3 a 8 minutos)",
-            name,
-            args.memory,
-            args.concurrency,
+    try:
+        sm.get_waiter("endpoint_in_service").wait(
+            EndpointName=name, WaiterConfig={"Delay": 20, "MaxAttempts": 45}
         )
-        sm_model.deploy(
-            serverless_inference_config=ServerlessInferenceConfig(
-                memory_size_in_mb=args.memory, max_concurrency=args.concurrency
-            ),
-            endpoint_name=name,
-        )
+    except Exception as exc:  # noqa: BLE001 - se informa el motivo que da SageMaker
+        reason = sm.describe_endpoint(EndpointName=name).get("FailureReason", str(exc))
+        raise SystemExit(f"El endpoint {name} no quedo en servicio: {reason}") from exc
     logger.info("Endpoint activo: %s", name)
     return name
 
@@ -222,6 +275,7 @@ def main(argv=None) -> int:
         "--concurrency", type=int, default=20, help="Concurrencia maxima del endpoint serverless"
     )
     parser.add_argument("--instance-type", default=None, help="Endpoint de instancia en vez de serverless")
+    parser.add_argument("--image-uri", default=None, help="Imagen XGBoost, si la region no esta en la tabla")
     action = parser.add_mutually_exclusive_group()
     action.add_argument("--check", metavar="ENDPOINT", help="Solo compara el endpoint con la API")
     action.add_argument("--delete", metavar="ENDPOINT", help="Borra el endpoint y termina")
