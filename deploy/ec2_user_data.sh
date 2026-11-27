@@ -41,7 +41,8 @@ git clone --branch "$REPO_REF" "$REPO_URL" "$APP"
 cd "$APP"
 if [ -n "$PATCH_URI" ]; then
   aws s3 cp "$PATCH_URI" /tmp/sentinel-ia.patch --region "$REGION"
-  git -c user.name=sentinel-ia -c user.email=sentinel-ia@localhost am /tmp/sentinel-ia.patch
+  # git apply acepta tanto un diff como la salida de git format-patch.
+  git apply /tmp/sentinel-ia.patch
 fi
 
 # IP publica: la elastica que reservo aws_ec2.sh o, si no hubo, la de la instancia.

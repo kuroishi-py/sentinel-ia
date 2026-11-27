@@ -8,8 +8,9 @@
 # t3.medium con Amazon Linux 2023 y el perfil LabInstanceProfile. La instancia
 # se configura sola con deploy/ec2_user_data.sh (unos 10 minutos).
 #
-# Si se pasa un parche (cambios que todavia no estan en GitHub), se sube a S3 y
-# la instancia lo aplica sobre la rama indicada en REPO_REF.
+# Si se pasa un parche (cambios que todavia no estan en GitHub, por ejemplo
+# "git diff origin/main > cambios.patch"), se sube a S3 y la instancia lo aplica
+# con git apply sobre la rama indicada en REPO_REF.
 #
 # Variables opcionales: AWS_REGION (us-east-1), INSTANCE_TYPE (t3.medium),
 # REPO_URL, REPO_REF (main), INSTANCE_PROFILE (LabInstanceProfile).
@@ -91,7 +92,14 @@ DASHBOARD_PASSWORD=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | cut -c1-16)
 
 # --- Instancia --------------------------------------------------------------
 AMI=$(aws ssm get-parameter --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64 \
-  --query Parameter.Value --output text)
+  --query Parameter.Value --output text 2>/dev/null || true)
+if [ -z "$AMI" ] || [ "$AMI" = "None" ]; then
+  # Sin permiso para SSM (puede pasar en AWS Academy): la AMI mas reciente de Amazon.
+  AMI=$(aws ec2 describe-images --owners amazon \
+    --filters "Name=name,Values=al2023-ami-2023.*-kernel-*-x86_64" "Name=state,Values=available" \
+    --query 'sort_by(Images, &CreationDate)[-1].ImageId' --output text)
+fi
+say "AMI $AMI"
 USER_DATA=$(mktemp)
 sed -e "s|__REPO_URL__|${REPO_URL}|" -e "s|__REPO_REF__|${REPO_REF}|" -e "s|__PATCH_URI__|${PATCH_URI}|" \
   -e "s|__REGION__|${REGION}|" -e "s|__PUBLIC_IP__|${PUBLIC_IP}|" -e "s|__API_KEY__|${API_KEY}|" \
