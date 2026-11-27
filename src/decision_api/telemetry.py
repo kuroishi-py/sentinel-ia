@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import threading
 from collections import Counter, deque
+from collections.abc import Callable
 
 from .schemas import Decision
 
@@ -33,8 +34,28 @@ class Telemetry:
         self._counters: Counter[str] = Counter()
         self._buckets: Counter[int] = Counter()
         self._latencies: deque[float] = deque(maxlen=SAMPLE_WINDOW)
+        #: Duracion completa de /v1/score en el servidor: lectura y validacion
+        #: del JSON, handler y serializacion de la respuesta. ``latency_ms``
+        #: (la que viaja en la respuesta) solo cubre el handler.
+        self._server_latencies: deque[float] = deque(maxlen=SAMPLE_WINDOW)
         self._latency_sum = 0.0
         self._requests = 0
+        #: Valores que se leen al momento del scrape (por ejemplo, eventos
+        #: publicados por el publisher, que vive en otro hilo).
+        self._gauges: dict[str, tuple[str, Callable[[], float]]] = {}
+
+    def add_gauge(self, name: str, help_text: str, read: Callable[[], float]) -> None:
+        """Registra un valor que se lee en cada /metrics como sentinel_<name>."""
+        self._gauges[name] = (help_text, read)
+
+    def _read_gauges(self) -> dict[str, float]:
+        out: dict[str, float] = {}
+        for name, (_help, read) in self._gauges.items():
+            try:
+                out[name] = float(read())
+            except Exception:  # noqa: BLE001 - una metrica rota no tumba /metrics
+                out[name] = float("nan")
+        return out
 
     # --- registro ---------------------------------------------------------
 
@@ -50,6 +71,10 @@ class Telemetry:
             if degraded:
                 self._counters["degraded"] += 1
 
+    def observe_server(self, duration_ms: float) -> None:
+        with self._lock:
+            self._server_latencies.append(duration_ms)
+
     def rate_limited(self) -> None:
         self._bump("rate_limited")
 
@@ -62,16 +87,22 @@ class Telemetry:
     def budget_exceeded(self) -> None:
         self._bump("budget_exceeded")
 
+    def auth_rejected(self) -> None:
+        self._bump("auth_rejected")
+
+    def store_error(self) -> None:
+        self._bump("store_error")
+
     def _bump(self, name: str) -> None:
         with self._lock:
             self._counters[name] += 1
 
     # --- lectura ----------------------------------------------------------
 
-    def quantiles(self) -> dict[str, float]:
+    def quantiles(self, server: bool = False) -> dict[str, float]:
         """p50, p95 y p99 de las latencias recientes, en milisegundos."""
         with self._lock:
-            samples = sorted(self._latencies)
+            samples = sorted(self._server_latencies if server else self._latencies)
         if not samples:
             return {"p50": 0.0, "p95": 0.0, "p99": 0.0}
         return {
@@ -87,14 +118,22 @@ class Telemetry:
             decisions = dict(self._decisions)
             counters = dict(self._counters)
             mean = (self._latency_sum / total) if total else 0.0
-        errors = counters.get("guard_rejected", 0) + counters.get("rate_limited", 0)
+        # Rechazos que el servicio hizo a proposito (cuota, guardrail, clave),
+        # sobre todo lo que llego. No son fallas del servicio, pero sirven para
+        # ver cuanto trafico se queda en la puerta.
+        rejected = sum(counters.get(k, 0) for k in ("guard_rejected", "rate_limited", "auth_rejected"))
+        seen = total + rejected
         return {
             "requests_total": total,
             "decisions": decisions,
             "counters": counters,
+            "gauges": self._read_gauges(),
             "latency_mean_ms": round(mean, 3),
             "latency": self.quantiles(),
-            "error_rate": round(errors / total, 6) if total else 0.0,
+            "latency_server": self.quantiles(server=True),
+            "rejected_rate": round(rejected / seen, 6) if seen else 0.0,
+            # Compatibilidad con el nombre anterior.
+            "error_rate": round(rejected / seen, 6) if seen else 0.0,
         }
 
     def render(self) -> str:
@@ -123,6 +162,8 @@ class Telemetry:
             ("guard_rejected", "Solicitudes rechazadas por un guardrail de entrada."),
             ("rate_limited", "Solicitudes rechazadas por cuota."),
             ("idempotent_hit", "Respuestas repetidas por idempotencia."),
+            ("auth_rejected", "Solicitudes sin API key valida."),
+            ("store_error", "Fallas del store de idempotencia toleradas sin cortar el pago."),
         ):
             lines.append(f"# HELP sentinel_{name}_total {help_text}")
             lines.append(f"# TYPE sentinel_{name}_total counter")
@@ -135,6 +176,11 @@ class Telemetry:
         lines.append(f'sentinel_latency_ms_bucket{{le="+Inf"}} {total}')
         lines.append(f"sentinel_latency_ms_sum {latency_sum:.3f}")
         lines.append(f"sentinel_latency_ms_count {total}")
+
+        for name, value in self._read_gauges().items():
+            lines.append(f"# HELP sentinel_{name} {self._gauges[name][0]}")
+            lines.append(f"# TYPE sentinel_{name} gauge")
+            lines.append(f"sentinel_{name} {value:g}")
 
         return "\n".join(lines) + "\n"
 

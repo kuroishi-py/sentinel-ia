@@ -55,6 +55,9 @@ class Settings:
 
     # --- Feature store ----------------------------------------------------
     redis_url: str = field(default_factory=lambda: _env("REDIS_URL", "redis://localhost:6379/0"))
+    # Una lectura de Valkey en la misma zona tarda menos de 1 ms; 50 ms ya es
+    # una falla y conviene degradar antes que esperar (EP2 seccion 6).
+    redis_timeout_ms: int = field(default_factory=lambda: _env_int("REDIS_TIMEOUT_MS", 50))
     idempotency_ttl_s: int = field(default_factory=lambda: _env_int("IDEMPOTENCY_TTL_S", 86_400))
 
     # --- Bus de eventos ---------------------------------------------------
@@ -74,6 +77,36 @@ class Settings:
     rate_limit_enabled: bool = field(default_factory=lambda: _env_bool("RATE_LIMIT_ENABLED", True))
     rate_limit_rps: int = field(default_factory=lambda: _env_int("RATE_LIMIT_RPS", 200))
     rate_limit_burst: int = field(default_factory=lambda: _env_int("RATE_LIMIT_BURST", 400))
+
+    # --- Autenticacion ----------------------------------------------------
+    # En AWS la pasarela se autentica con mTLS en el ALB (EP2 seccion 8.2). En
+    # local, cada cliente tiene una API key que manda en X-API-Key. Formato:
+    # "cliente:clave,otro:clave2". Sin claves y con AUTH_ENABLED=true, todo
+    # /v1/score responde 401: la autenticacion falla cerrada.
+    auth_enabled: bool = field(default_factory=lambda: _env_bool("AUTH_ENABLED", True))
+    api_keys_raw: str = field(default_factory=lambda: _env("API_KEYS", ""))
+    # Solo detras de un proxy propio (Caddy, ALB) se confia en X-Forwarded-For.
+    # Si la API queda expuesta directo, ese encabezado lo pone el cliente y
+    # serviria para saltarse la cuota.
+    trust_proxy_headers: bool = field(default_factory=lambda: _env_bool("TRUST_PROXY_HEADERS", False))
+
+    # --- Feature store ------------------------------------------------------
+    # auto   : Redis si responde al arrancar; si no, memoria del proceso
+    # redis  : Redis o nada (si cae, las decisiones salen degradadas)
+    # memory : memoria del proceso, para desarrollo sin Docker
+    feature_store: str = field(default_factory=lambda: _env("FEATURE_STORE", "auto"))
+    # Por omision, merchant_risk.json junto al modelo.
+    merchant_risk_path: str = field(default_factory=lambda: _env("MERCHANT_RISK_PATH", ""))
+
+    @property
+    def api_keys(self) -> dict[str, str]:
+        """Clave -> cliente. Las entradas mal formadas se ignoran."""
+        out: dict[str, str] = {}
+        for entry in self.api_keys_raw.split(","):
+            client, sep, key = entry.strip().partition(":")
+            if sep and client and key:
+                out[key] = client
+        return out
 
     @property
     def feature_names(self) -> list[str]:

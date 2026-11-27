@@ -67,6 +67,7 @@ class ShapExplainer:
 
         booster = xgb.Booster()
         booster.load_model(str(model_path))
+        booster.set_param({"nthread": 1})  # mismo motivo que en scorer.py
         self._explainer = shap.TreeExplainer(booster)
         logger.info("TreeExplainer listo")
 
@@ -106,6 +107,9 @@ def store_case(event: dict, explanation: Explanation | None) -> None:
         "model_version": event.get("model_version"),
         "reason_codes": event.get("reason_codes", []),
         "degraded": event.get("degraded", False),
+        # El valor de cada feature al decidir: la explicacion dice cuanto peso,
+        # esto dice cuanto valia (por ejemplo, 4 compras en la ultima hora).
+        "features": event.get("features", {}),
         "decided_at": event.get("decided_at"),
         "explanation": explanation.model_dump(mode="json") if explanation else None,
         "status": "OPEN",

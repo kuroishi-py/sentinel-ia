@@ -4,8 +4,8 @@ A diferencia de las anteriores, estas levantan la aplicacion completa: FastAPI,
 guardrails, features, scorer de respaldo, politica y telemetria trabajando
 juntos. Cubren el "pruebas unitarias e integracion" de la pauta punto 2.3.
 
-No necesitan Redis ni RabbitMQ: la API degrada a memoria local, que es
-precisamente uno de los comportamientos que se quiere verificar.
+No necesitan Redis ni RabbitMQ: la API usa el feature store en memoria, que
+es precisamente uno de los comportamientos que se quiere verificar.
 """
 
 from __future__ import annotations
@@ -19,22 +19,37 @@ pytest.importorskip("httpx")
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+API_KEY = "clave-de-prueba"
+HEADERS = {"X-API-Key": API_KEY}
+
+
+def configure_env(**overrides: str) -> None:
+    """Entorno comun de las pruebas de integracion."""
+    env = {
+        "PUBLISHER_ENABLED": "false",
+        "SCORER_BACKEND": "local",
+        "MODEL_PATH": "artifacts/no-existe.json",
+        "FEATURE_STORE": "memory",
+        "AUTH_ENABLED": "true",
+        "API_KEYS": f"pasarela:{API_KEY}",
+        "RATE_LIMIT_RPS": "1000",
+        "RATE_LIMIT_BURST": "2000",
+    }
+    env.update(overrides)
+    os.environ.update(env)
+
 
 @pytest.fixture(scope="module")
 def client():
     # Sin bus de eventos: las pruebas no dependen de RabbitMQ.
-    os.environ["PUBLISHER_ENABLED"] = "false"
-    os.environ["SCORER_BACKEND"] = "local"
-    os.environ["MODEL_PATH"] = "artifacts/no-existe.json"
-    os.environ["RATE_LIMIT_RPS"] = "1000"
-    os.environ["RATE_LIMIT_BURST"] = "2000"
+    configure_env()
 
     from src.decision_api.config import reset_settings
 
     reset_settings()
     from src.decision_api.main import app
 
-    with TestClient(app) as test_client:
+    with TestClient(app, headers=HEADERS) as test_client:
         yield test_client
 
 
@@ -150,9 +165,7 @@ class TestCP17RateLimitEnCaliente:
     """CP-17: la API devuelve 429 cuando se pasa la cuota."""
 
     def test_cuota_baja_bloquea_y_trae_retry_after(self) -> None:
-        os.environ["RATE_LIMIT_RPS"] = "1"
-        os.environ["RATE_LIMIT_BURST"] = "2"
-        os.environ["PUBLISHER_ENABLED"] = "false"
+        configure_env(RATE_LIMIT_RPS="1", RATE_LIMIT_BURST="2")
 
         from src.decision_api.config import reset_settings
 
@@ -164,7 +177,7 @@ class TestCP17RateLimitEnCaliente:
         importlib.reload(main_module)
 
         try:
-            with TestClient(main_module.app) as limited:
+            with TestClient(main_module.app, headers=HEADERS) as limited:
                 codes = [
                     limited.post("/v1/score", json=payload(id_tx=f"tx-cp17-{i}")).status_code
                     for i in range(6)
