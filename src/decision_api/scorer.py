@@ -123,12 +123,22 @@ class SageMakerScorer:
         response = self._client.invoke_endpoint(
             EndpointName=self._endpoint,
             ContentType="text/csv",
+            # Sin Accept, SageMaker pide JSON y el handler responde {"scores": [...]}.
+            Accept="text/csv",
             Body=payload.encode("utf-8"),
         )
         body = response["Body"].read()
         if isinstance(body, bytes):
             body = body.decode("utf-8")
-        return float(body.strip().splitlines()[0].split(",")[0])
+        return parse_endpoint_score(body)
+
+
+def parse_endpoint_score(body: str) -> float:
+    """Primer score de la respuesta de inference.py, en CSV o en JSON."""
+    text = body.strip()
+    if text.startswith("{"):
+        return float(json.loads(text)["scores"][0])
+    return float(text.splitlines()[0].split(",")[0])
 
 
 def sha256_of(path: str | Path) -> str:

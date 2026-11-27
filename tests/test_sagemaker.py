@@ -73,7 +73,16 @@ class TestCP25SageMaker:
         call = runtime.calls[0]
         assert call["EndpointName"] == "sentinel-ia-test"
         assert call["ContentType"] == "text/csv"
+        assert call["Accept"] == "text/csv"
         assert len(call["Body"].decode().split(",")) == 11
+
+    def test_acepta_la_respuesta_en_json(self) -> None:
+        # Asi responde el contenedor cuando la solicitud no trae Accept
+        # (visto en el endpoint real el 27-11-2026).
+        from src.decision_api.scorer import parse_endpoint_score
+
+        assert parse_endpoint_score('{"scores": [1.0764e-06]}') == pytest.approx(1.0764e-06)
+        assert parse_endpoint_score("0.998564\n") == pytest.approx(0.998564)
 
     def test_la_llamada_se_ejecuta_fuera_del_event_loop(self) -> None:
         # Si corriera dentro del event loop, cada invocacion (decenas de ms)

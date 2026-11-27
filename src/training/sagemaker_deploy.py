@@ -237,10 +237,12 @@ def check(name: str, region: str) -> bool:
         body = ",".join(repr(float(v)) for v in case["vector"])
         started = time.perf_counter()
         response = client.invoke_endpoint(
-            EndpointName=name, ContentType="text/csv", Body=body.encode("utf-8")
+            EndpointName=name, ContentType="text/csv", Accept="text/csv", Body=body.encode("utf-8")
         )
         elapsed = (time.perf_counter() - started) * 1000
-        score = float(response["Body"].read().decode("utf-8").strip().splitlines()[0])
+        text = response["Body"].read().decode("utf-8").strip()
+        # Sin Accept el contenedor responde JSON; se acepta igual por si acaso.
+        score = float(json.loads(text)["scores"][0]) if text.startswith("{") else float(text.splitlines()[0])
         diff = abs(score - case["score_api"])
         ok = ok and diff <= TOLERANCE
         logger.info(
