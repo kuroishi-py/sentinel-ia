@@ -81,17 +81,38 @@ class LocalScorer:
 
 
 class SageMakerScorer:
-    """Endpoint de SageMaker. Es el backend que exige la pauta de la EP3."""
+    """Endpoint de SageMaker. Es el backend que exige la pauta de la EP3.
 
-    def __init__(self, endpoint_name: str, model_version: str, region: str, client=None) -> None:
+    Es una llamada de red por transaccion, asi que la API la ejecuta fuera del
+    event loop (``blocking_io``) y con timeouts cortos. Con los valores por
+    defecto de boto3 (60 s de lectura y reintentos), un endpoint lento dejaria
+    el pago esperando mucho despues de que la pasarela corto a los 80 ms, y
+    mientras tanto bloquearia a todas las demas solicitudes del proceso.
+    """
+
+    blocking_io = True
+
+    def __init__(
+        self, endpoint_name: str, model_version: str, region: str, client=None, timeout_s: float = 1.0
+    ) -> None:
         self._endpoint = endpoint_name
         self._version = model_version
         if client is not None:
             self._client = client
         else:
             import boto3  # local: solo se necesita con este backend
+            from botocore.config import Config
 
-            self._client = boto3.client("sagemaker-runtime", region_name=region)
+            self._client = boto3.client(
+                "sagemaker-runtime",
+                region_name=region,
+                config=Config(
+                    connect_timeout=timeout_s,
+                    read_timeout=timeout_s,
+                    retries={"max_attempts": 1, "mode": "standard"},
+                    max_pool_connections=50,
+                ),
+            )
 
     @property
     def model_version(self) -> str:
@@ -102,12 +123,22 @@ class SageMakerScorer:
         response = self._client.invoke_endpoint(
             EndpointName=self._endpoint,
             ContentType="text/csv",
+            # Sin Accept, SageMaker pide JSON y el handler responde {"scores": [...]}.
+            Accept="text/csv",
             Body=payload.encode("utf-8"),
         )
         body = response["Body"].read()
         if isinstance(body, bytes):
             body = body.decode("utf-8")
-        return float(body.strip().splitlines()[0].split(",")[0])
+        return parse_endpoint_score(body)
+
+
+def parse_endpoint_score(body: str) -> float:
+    """Primer score de la respuesta de inference.py, en CSV o en JSON."""
+    text = body.strip()
+    if text.startswith("{"):
+        return float(json.loads(text)["scores"][0])
+    return float(text.splitlines()[0].split(",")[0])
 
 
 def sha256_of(path: str | Path) -> str:

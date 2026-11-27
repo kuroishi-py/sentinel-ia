@@ -219,6 +219,34 @@ La cuota es de 200/s por cliente **y por proceso**, así que la tarea, con 2
 workers, deja pasar hasta unas 400/s. Es la segunda capa: en AWS el límite de
 borde va en el ALB o en WAF.
 
+### 2.4 En AWS: modelo en la API frente al endpoint de SageMaker (decisión D2)
+
+Medido el 27-11-2026 en AWS Academy (`us-east-1`): instancia EC2 `t3.medium`
+con el mismo `docker compose`, y endpoint Serverless Inference
+`sentinel-ia-20261127-1928` (2.048 MB, concurrencia máxima 20) con el mismo
+artefacto versionado (`v1.0.0-sim`, SHA-256 `bf46a588…`). k6 corre dentro de la
+instancia contra la API, 116 tx/s de llegada constante durante 2 minutos. Lo
+único que cambia entre las dos filas es `SCORER_BACKEND`. Pasos en
+[DESPLIEGUE_AWS.md](DESPLIEGUE_AWS.md).
+
+| Backend | Solicitudes | p50 | p95 | p99 | Máx. | Errores HTTP | Degradadas | p99 < 100 ms |
+|---|---|---|---|---|---|---|---|---|
+| Modelo en la API (D2) | 13.921 (116,0/s) | 3,16 ms | 8,42 ms | 28,19 ms | 84,53 ms | 0,00% | 0 | Cumple |
+| Endpoint de SageMaker | 13.921 (116,0/s) | 42,74 ms | 255,08 ms | 659,72 ms | 909,27 ms | 0,00% | 2.946 (21%) | No cumple |
+
+**La decisión D2 de la EP2 queda confirmada con datos.** El endpoint suma un
+salto de red y la sobrecarga de Serverless Inference: el p99 pasa de 28 ms a
+660 ms. Ninguna solicitud falla, porque la API corta a los 60 ms internos y
+responde degradado; pero el 21% de los pagos queda en revisión manual, lo que
+anula el objetivo de bajar los falsos positivos. El endpoint sirve para
+entrenamiento, pruebas en sombra y procesos por lotes, no para la ruta del pago.
+
+Paridad del modelo (`sagemaker_deploy.py --check`, desde la terminal del
+laboratorio): los tres escenarios de `artifacts/sagemaker_parity.json` dan el
+mismo score en la API y en el endpoint (diferencia 0). Latencia por invocación
+desde esa terminal: 448 ms la primera (arranque en frío), 105 y 217 ms las
+siguientes.
+
 ---
 
 ## 3. Lo que encontraron las pruebas, y cómo se resolvió

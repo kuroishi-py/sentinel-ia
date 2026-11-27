@@ -24,12 +24,12 @@ docs/informe/portada.local.json, que no se versiona.
 | Apartado de la pauta | Indicador | Sección |
 |---|---|---|
 | 1.1 y 2.1 Modelo: tipo, framework, entrenamiento, datos, hiperparámetros; despliegue; interpretabilidad; capturas | IE1, IE2 | 2 |
-| 1.2 Infraestructura, escalabilidad, costos y evidencias | IE4, IE5 | 1, 4.4, 5 y anexo de evidencias |
+| 1.2 SageMaker, infraestructura, escalabilidad, costos y evidencias | IE4, IE5 | 1, 2.3, 4.2, 4.4, 5 y anexo de evidencias |
 | 1.3 y 2.2 APIs, flujo entre componentes, seguridad, secuencia e interoperabilidad | IE7 | 3 |
 | 2.3 Casos de prueba, rendimiento, carga, métricas del modelo, optimización | IE10 | 4 |
 | Aspectos formales: README, Dockerfile, referencias APA, declaración de IA | — | Repositorio y final |
 
-**Retroalimentación de entregas anteriores.** En la EP1 no hubo observaciones. [COMPLETAR: observaciones del docente a la EP2 y cómo se incorporaron.]
+**Retroalimentación de entregas anteriores.** En la EP1 no hubo observaciones.
 
 ## 1. Qué se construyó
 
@@ -89,25 +89,16 @@ El endpoint `POST /v1/score` corre detrás de un borde TLS 1.3 (`https://localho
 
 La imagen es multietapa sobre `python:3.12-slim`, con usuario sin privilegios y sin secretos. Los contenedores corren con raíz de solo lectura y `no-new-privileges`. El contrato OpenAPI 3.1 se publica en `/docs` (Figura 2).
 
-[COMPLETAR: endpoint de AWS SageMaker (Serverless Inference): configuración, captura de la consola y métricas `Invocations`/`ModelLatency` de CloudWatch. `docs/EVIDENCIAS.md` documenta el camino para desplegar el modelo de servicio sin training job.]
-
 ![Figura 2. Contrato OpenAPI de decision-api, con el esquema de seguridad X-API-Key.](img/fig_swagger.png)
+
+**En AWS** (Learner Lab, `us-east-1`): una EC2 `t3.medium` con rol `LabRole` e IMDSv2 ejecuta el mismo `docker compose`, con TLS de Let's Encrypt en `https://api.54-221-53-160.sslip.io` y logs en CloudWatch (`/sentinel-ia/*`). Pasos en `docs/DESPLIEGUE_AWS.md`. El modelo también se publicó, sin reentrenar, en un endpoint Serverless de SageMaker; la configuración y la comparación de latencia están en la sección 4.2.
+
 
 ### 2.4 Integración en la aplicación empresarial e interpretabilidad
 
-La API nunca devuelve la explicación a la pasarela; la EP2 lo prohíbe para dificultar la extracción del modelo. El camino es asíncrono:
-1. Cada decisión se publica en RabbitMQ.
-2. shap-worker calcula TreeSHAP para revisiones y rechazos.
-3. El worker crea el caso con el valor y el aporte de cada feature.
-4. La consola lo muestra en el lenguaje del analista.
+La API nunca devuelve la explicación a la pasarela; la EP2 lo prohíbe para dificultar la extracción del modelo. El camino es asíncrono: cada decisión se publica en RabbitMQ; shap-worker calcula TreeSHAP para revisiones y rechazos y crea el caso con el valor y el aporte de cada feature, y la consola lo muestra en el lenguaje del analista.
 
-En la Figura 3, una toma de cuenta termina rechazada y la consola explica por qué:
-- compra en el extranjero (+5,3);
-- dispositivo visto por primera vez hace menos de 24 h (+4,3);
-- comercio con 9,6% de fraude histórico (+2,6);
-- tres compras en la última hora, por 6,2 veces el promedio del usuario.
-
-La antigüedad del usuario empuja en contra. TreeSHAP es exacto: la suma del valor base y los aportes da el score (CP-22).
+En la Figura 3, una toma de cuenta termina rechazada y la consola explica por qué: compra en el extranjero (+5,3), dispositivo visto por primera vez hace menos de 24 h (+4,3), comercio con 9,6% de fraude histórico (+2,6) y tres compras en la última hora, por 6,2 veces el promedio del usuario. La antigüedad del usuario empuja en contra. TreeSHAP es exacto: la suma del valor base y los aportes da el score (CP-22).
 
 ![Figura 3. Toma de cuenta: decisiones de la API y explicación del caso creado por shap-worker.](img/fig_toma_de_cuenta.png)
 
@@ -171,15 +162,7 @@ Todo se verifica con `scripts/verificar_seguridad.py`: TLS 1.3 negociado y 1.2 r
 
 ### 3.4 Pruebas de interoperabilidad
 
-CP-23 tiene seis pruebas que corren contra el sistema levantado, por el mismo camino que la pasarela:
-- el borde negocia TLS 1.3 y rechaza 1.2;
-- los endpoints de operación no se ven desde afuera;
-- sin clave no se pasa;
-- una toma de cuenta termina en un caso explicado, con las features de Redis;
-- una compra normal no genera caso;
-- RabbitMQ tiene la cola enlazada y un consumidor activo.
-
-Las seis pasan.
+CP-23 tiene seis pruebas que corren contra el sistema levantado, por el mismo camino que la pasarela, y las seis pasan: el borde negocia TLS 1.3 y rechaza 1.2; los endpoints de operación no se ven desde afuera; sin clave no se pasa; una toma de cuenta termina en un caso explicado, con las features de Redis; una compra normal no genera caso; y RabbitMQ tiene la cola enlazada y un consumidor activo.
 
 ![Figura 6. Secuencia de scoring de la EP3: camino síncrono, ramas de rechazo y degradación, y camino asíncrono.](img/ep3_secuencia_rot.png)
 
@@ -221,6 +204,17 @@ Locust se aparta de los otros tres clientes, que coinciden en 2 a 5 ms. Una sond
 
 **Hallazgo para el contrato con la pasarela.** Un cliente que envía cabeceras y cuerpo del POST en dos escrituras sin `TCP_NODELAY` suma 40 ms fijos: 44,7 ms contra 3,0 ms. Es el algoritmo de Nagle esperando el ACK que Linux retarda. El servidor ya usa `TCP_NODELAY`; la pasarela debe usar un cliente HTTP que también lo haga.
 
+**En AWS: modelo en la API frente a SageMaker (decisión D2).** El mismo `model.json`, verificado por SHA-256, se publicó en el endpoint Serverless `sentinel-ia-20261127-1928` (contenedor XGBoost 1.7-1, 2 GB, hasta 20 invocaciones simultáneas y escala a cero; Figura 7), que devolvió el mismo score que la API en tres escenarios. Carga de k6 a 116 tx/s durante 2 minutos desde la EC2, cambiando solo `SCORER_BACKEND`:
+
+| Backend | Solicitudes | p50 | p95 | p99 | Errores | Degradadas |
+|---|---|---|---|---|---|---|
+| Modelo en la API (D2) | 13.921 | 3,16 ms | 8,42 ms | **28,19 ms** | 0% | 0 |
+| Endpoint de SageMaker | 13.921 | 42,74 ms | 255,08 ms | **659,72 ms** | 0% | 2.946 (21%) |
+
+Con el modelo en la API, los objetivos se cumplen también en AWS (CPU de la instancia: 25 a 30%). Con el endpoint, el p99 sube a 660 ms y el 21% sale degradado a revisión por el corte de 60 ms, aunque el modelo tarda unos 2 ms (`ModelLatency`) y no hubo errores: el resto es red y sobrecarga. **La medición confirma D2:** el endpoint sirve para lotes y evaluación en sombra, no para la ruta del pago.
+
+![Figura 7. Endpoint Serverless de SageMaker: latencia del modelo (unos 2 ms bajo carga) y 0 errores de invocación.](img/fig_sagemaker.png)
+
 ### 4.3 Métricas del modelo
 
 Sobre los 14 días de prueba, que el modelo nunca vio: 70.732 transacciones, 510 fraudes.
@@ -238,7 +232,7 @@ Notas de lectura:
 - **Por tipo de fraude** (umbral 0,45): cuenta nueva 0,965, toma de cuenta 0,871 y prueba de tarjeta 0,858.
 - **Benchmark real:** el mismo algoritmo obtiene precision y recall del mismo orden sobre fraude real, lo que respalda que el resultado no es un artefacto de la simulación.
 
-![Figura 7. Consola: modelo de servicio, benchmark ULB y motor de reglas; importancia SHAP global y matriz de confusión.](img/fig_calidad_modelo.png)
+![Figura 8. Consola: modelo de servicio, benchmark ULB y motor de reglas; importancia SHAP global y matriz de confusión.](img/fig_calidad_modelo.png)
 
 ### 4.4 Escalabilidad: capacidad por tarea
 
@@ -286,14 +280,14 @@ La estimación de la EP2 (Anexo F, AWS Pricing Calculator, sa-east-1) es de USD 
 
 La tercera opción ahorra USD 1.190 al año, el 5% del total. Antes de adoptarla hay que repetir la medición en Fargate ARM, porque el margen frente a los 30 ms es de ~20%.
 
-[COMPLETAR: costo real del endpoint de SageMaker durante la demostración.]
+**Costo de la demostración en AWS:** USD 0,03 al 27-11-2026 según *Costo y uso* (EC2, red y CloudWatch; la facturación tiene hasta 24 h de desfase). El endpoint serverless solo cobra mientras procesa invocaciones.
 
 ## 6. Conclusiones
 
 - **El diseño de la EP2 cumple sus objetivos medidos.** Servir el modelo en memoria (D2) deja el p99 en 4,5 ms frente a 100 ms de presupuesto. El 99,4% de las decisiones se aprueban sin fricción, y una explicación acompaña cada revisión o rechazo.
 - **La interpretabilidad depende del contrato de features más que del modelo.** Separar el modelo que se sirve del benchmark permite explicar decisiones en términos que un analista usa, sin renunciar a una validación con fraude real. Calcular las features con el mismo código en entrenamiento y servicio elimina la fuente más común de error silencioso.
 - **Medir cambió decisiones.** La capacidad real triplica la supuesta y permite reducir a la mitad el costo de la API. Las pruebas de carga, las de comportamiento y la revisión de logs encontraron cinco defectos que las unitarias no veían, entre ellos un 500 bajo falla de Redis y una API key en los logs. También dejaron dos condiciones para el contrato con la pasarela: identificadores no numéricos y `TCP_NODELAY`.
-- **Pendiente:** el despliegue en SageMaker y su comparación de latencia contra el modelo en memoria (issue #4). El lado en memoria ya está medido.
+- **SageMaker confirmó D2 con datos:** el mismo modelo en el endpoint sube el p99 de 28 a 660 ms y deja el 21% de los pagos en revisión, aunque el modelo tarda 2 ms. SageMaker queda para lotes y evaluación en sombra.
 
 ## Referencias
 
@@ -315,6 +309,7 @@ Se utilizó Claude (Anthropic) para:
 - revisar el repositorio frente a la pauta de la EP3;
 - implementar el simulador de transacciones, el cálculo de features compartido entre entrenamiento y servicio, la autenticación, el borde TLS y las pruebas;
 - ejecutar y diagnosticar las pruebas de carga;
+- preparar el despliegue en AWS Academy (endpoint de SageMaker, EC2 y CloudWatch) con scripts que el equipo ejecutó en el laboratorio;
 - redactar borradores de la documentación y de este informe.
 
 Las decisiones de diseño provienen de la EP1 y la EP2 del equipo. Las cifras fueron medidas en el sistema y están respaldadas por los archivos de `docs/evidencias/` del repositorio. El equipo revisó y validó el contenido final.
