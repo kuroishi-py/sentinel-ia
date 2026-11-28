@@ -148,8 +148,8 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
 ### 2.3 Testing y calidad · IE10
 
 - `[x]` **Mínimo 10 casos de prueba**
-  - 24 casos (CP-01 a CP-23, más CP-20b) en 101 funciones: 95 unitarias y de
-    integración, y 6 de punta a punta.
+  - 25 casos (CP-01 a CP-23, CP-20b y CP-25) en 110 funciones: 104 unitarias
+    y de integración, y 6 de punta a punta.
   - [pruebas_unitarias_integracion.txt](evidencias/pruebas_unitarias_integracion.txt).
 
   | Caso | Qué verifica | Archivo |
@@ -178,6 +178,7 @@ Detalle y números: [RESULTADOS.md §1](RESULTADOS.md#1-modelo).
   | CP-21 | Modelo servido: hash, contrato, comportamiento y monotonía | `test_model_features.py` |
   | CP-22 | La explicación SHAP es exacta y nombra las señales del fraude | `test_model_features.py` |
   | CP-23 | Interoperabilidad: TLS → API → Redis → RabbitMQ → worker → caso | `test_e2e.py` |
+  | CP-25 | Backend de SageMaker: mismo modelo y contrato que la API, sin arriesgar el pago | `test_sagemaker.py` |
 
 - `[x]` **Latencia p50, p95 y p99, throughput y tasa de errores**
   - [RESULTADOS.md §2.1](RESULTADOS.md#21-pico-del-caso-116-txs-durante-3-minutos).

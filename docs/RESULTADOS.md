@@ -299,6 +299,33 @@ siguientes.
    cada 510. Es una decisión de negocio que conviene tomar con el costo de cada
    error.
 
+7. **Dónde servir el modelo: SageMaker frente a la API, con costo.** A
+   1.000.000 tx/día son 30 millones de invocaciones al mes. Precios de la
+   página oficial de SageMaker (<https://aws.amazon.com/sagemaker/ai/pricing/>,
+   consultada el 27-11-2026): Serverless de 2.048 MB a USD 0,00004 por segundo
+   de cómputo y USD 0,016 por GB de datos procesados.
+
+   | Opción | Cálculo | USD/mes adicional | p99 medido (§2.4) |
+   |---|---|---|---|
+   | Modelo en la API (D2) | Ya incluido en las tareas de decision-api | 0 | 28 ms |
+   | Serverless, 2 ms por invocación (`ModelLatency` medido) | 30 M × 0,002 s × 0,00004 + 3,6 GB × 0,016 | 2,46 | 660 ms, 21% degradadas |
+   | Serverless, 10 ms por invocación (cota conservadora) | 30 M × 0,010 s × 0,00004 + 3,6 GB × 0,016 | 12,06 | — |
+   | Instancia, 2 × `ml.c5.xlarge` | 2 × 730 h × 0,204 | 297,84 | No medido |
+
+   - Los ~120 bytes por invocación son las 11 features en CSV más el score.
+   - El precio de `ml.c5.xlarge` es el de los ejemplos de la misma página;
+     conviene confirmarlo en el AWS Pricing Calculator para la región final.
+   - En todos los casos las tareas de decision-api siguen siendo necesarias:
+     calculan las features y aplican la política. SageMaker se suma, no
+     reemplaza.
+
+   Conclusión: Serverless es barato, pero su latencia (arranque en frío, salto
+   de red, concurrencia máxima de 20) deja pagos en revisión; un endpoint de
+   instancia evitaría el arranque en frío, pero cuesta cuatro veces la API
+   completa para un modelo que tarda 2 ms. La decisión D2 se sostiene en
+   rendimiento y en costo. SageMaker conviene para lotes, evaluación en sombra
+   y prueba de versiones nuevas, donde escalar a cero sí ahorra.
+
 ---
 
 ## 5. Cómo reproducir

@@ -9,6 +9,7 @@
 #   docker compose up -d --build
 #   docker compose logs -f worker
 #   docker compose --profile carga run --rm locust     # prueba de carga
+#   docker compose --profile demo up -d                # URLs publicas temporales
 #   docker compose down -v
 #
 # La clave de la API sale de API_KEYS / SENTINEL_API_KEY (copia .env.example a
@@ -207,6 +208,26 @@ services:
     volumes:
       - ./load:/mnt/sentinel/load:ro
       - ./reports:/mnt/sentinel/reports
+    depends_on:
+      - api
+
+  # Demo desde otro equipo o un telefono, sin AWS: tuneles rapidos de
+  # Cloudflare (sin cuenta) hacia el dashboard y la API. Cada arranque entrega
+  # URLs https://*.trycloudflare.com nuevas; se ven con `make demo-urls`.
+  # Cualquiera con la URL entra: antes de exponer la API, define en .env claves
+  # propias en API_KEYS y SENTINEL_API_KEY (la de la demo esta en este
+  # repositorio publico).
+  tunel-dashboard:
+    image: cloudflare/cloudflared:2026.11.2
+    profiles: ["demo"]
+    command: ["tunnel", "--no-autoupdate", "--url", "http://dashboard:8501"]
+    depends_on:
+      - dashboard
+
+  tunel-api:
+    image: cloudflare/cloudflared:2026.11.2
+    profiles: ["demo"]
+    command: ["tunnel", "--no-autoupdate", "--url", "http://api:8000"]
     depends_on:
       - api
 

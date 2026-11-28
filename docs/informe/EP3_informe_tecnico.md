@@ -171,7 +171,7 @@ CP-23 tiene seis pruebas que corren contra el sistema levantado, por el mismo ca
 
 ### 4.1 Casos de prueba
 
-Son 24 casos (CP-01 a CP-23 y CP-20b) en 101 funciones: 95 unitarias y de integración, y 6 de punta a punta. Todas pasan y ruff no reporta hallazgos. La integración continua corre las 95 con un Redis real en cada cambio.
+Son 25 casos (CP-01 a CP-23, CP-20b y CP-25) en 110 funciones: 104 unitarias y de integración, y 6 de punta a punta. Todas pasan y ruff no reporta hallazgos. La integración continua corre las 104 con un Redis real en cada cambio.
 
 | Grupo | Casos | Qué verifican |
 |---|---|---|
@@ -182,7 +182,7 @@ Son 24 casos (CP-01 a CP-23 y CP-20b) en 101 funciones: 95 unitarias y de integr
 | API | CP-13 a CP-16 | Contrato, PAN en caliente, idempotencia, health y métricas |
 | Seguridad y resiliencia | CP-18, CP-19 | API key, fuerza bruta con cuota, Redis caído sin 500 |
 | Modelo | CP-21, CP-22 | Artefacto aprobado, comportamiento, monotonía, SHAP exacto |
-| Interoperabilidad | CP-23 | TLS → API → Redis → RabbitMQ → worker → caso |
+| Interoperabilidad | CP-23, CP-25 | TLS → API → Redis → RabbitMQ → worker → caso; contrato del endpoint de SageMaker |
 
 ### 4.2 Rendimiento a 116 tx/s
 
@@ -280,7 +280,17 @@ La estimación de la EP2 (Anexo F, AWS Pricing Calculator, sa-east-1) es de USD 
 
 La tercera opción ahorra USD 1.190 al año, el 5% del total. Antes de adoptarla hay que repetir la medición en Fargate ARM, porque el margen frente a los 30 ms es de ~20%.
 
-**Costo de la demostración en AWS:** USD 0,03 al 27-11-2026 según *Costo y uso* (EC2, red y CloudWatch; la facturación tiene hasta 24 h de desfase). El endpoint serverless solo cobra mientras procesa invocaciones.
+**SageMaker frente a la API, a 1.000.000 tx/día** (30 M de invocaciones/mes; Serverless de 2 GB a USD 0,00004/s y USD 0,016/GB, según la página oficial):
+
+| Dónde corre el modelo | Costo adicional/mes | p99 medido a 116 tx/s |
+|---|---|---|
+| En la API (D2) | 0 | 28 ms |
+| SageMaker Serverless, 2 GB | 2,5 (2 ms por invocación) a 12 (10 ms) | 660 ms, 21% degradadas |
+| SageMaker de instancia, 2 × `ml.c5.xlarge` (alta disponibilidad) | ~298 | No medido |
+
+Serverless es barato; lo descarta la latencia, que deja el 21% de los pagos en revisión. Uno de instancia evita el arranque en frío, pero cuesta cuatro veces la API completa para un modelo de 2 ms. D2 se sostiene en rendimiento y en costo; SageMaker queda para lotes y evaluación en sombra, y cambiar de backend es una variable (`SCORER_BACKEND`).
+
+**Costo de la demostración en AWS:** USD 0,03 al 27-11-2026 según *Costo y uso*.
 
 ## 6. Conclusiones
 

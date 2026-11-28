@@ -1,4 +1,4 @@
-.PHONY: help install train train-ulb api test cov lint e2e up down seed carga carga-capacidad k6 clean
+.PHONY: help install train train-ulb api test cov lint e2e up down seed carga carga-capacidad k6 demo demo-urls clean
 
 help:
 	@echo "install          Crea .venv e instala dependencias de desarrollo"
@@ -14,6 +14,8 @@ help:
 	@echo "carga            Locust al pico del caso: 116 tx/s, 3 min"
 	@echo "carga-capacidad  Locust a saturacion por 1 min (muestra la cuota)"
 	@echo "k6               k6 a 116 tx/s de llegada constante, 3 min"
+	@echo "demo             URLs publicas temporales (Cloudflare) para el dashboard y la API"
+	@echo "demo-urls        Muestra esas URLs"
 	@echo "down             Baja Docker Compose y borra volumenes"
 
 install:
@@ -49,6 +51,15 @@ up:
 	@echo "Dashboard  https://localhost:8444"
 	@echo "API local  http://localhost:8000/docs"
 	@echo "RabbitMQ   http://localhost:15672 (guest/guest)"
+
+demo: up
+	docker compose --profile demo up -d tunel-dashboard tunel-api
+	@sleep 15
+	@$(MAKE) --no-print-directory demo-urls
+
+demo-urls:
+	@echo "Dashboard  $$(docker compose logs tunel-dashboard 2>&1 | grep -o 'https://[a-z0-9-]*[.]trycloudflare[.]com' | tail -1)"
+	@echo "API        $$(docker compose logs tunel-api 2>&1 | grep -o 'https://[a-z0-9-]*[.]trycloudflare[.]com' | tail -1)/docs"
 
 e2e:
 	docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt reports/caddy-root.crt

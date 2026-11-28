@@ -20,7 +20,8 @@ sección de ese documento que lo justifica.
 
 Todo en [docs/RESULTADOS.md](docs/RESULTADOS.md). El mapa pauta → evidencia
 está en [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md), y la autoevaluación por
-criterio, en [docs/RUBRICA.md](docs/RUBRICA.md).
+criterio, en [docs/RUBRICA.md](docs/RUBRICA.md). La preparación de la defensa está
+en [docs/DEFENSA.md](docs/DEFENSA.md).
 
 ---
 
@@ -70,6 +71,18 @@ Si cambias `dashboard/app.py` con Docker Desktop en Windows, reinicia el
 contenedor (`docker compose restart dashboard`): el montaje no avisa los
 cambios y Streamlit sigue con la versión anterior.
 
+### Demo desde un teléfono u otro equipo, sin AWS
+
+```bash
+make demo          # o: docker compose --profile demo up -d, y luego make demo-urls
+```
+
+Abre túneles rápidos de Cloudflare (no piden cuenta) hacia el dashboard y la
+API, y muestra sus URLs `https://*.trycloudflare.com`. Cambian en cada
+arranque. Cualquiera con la URL entra, así que antes de exponer la API conviene
+definir claves propias en `.env` (`API_KEYS` y `SENTINEL_API_KEY`, ver
+`.env.example`): la de la demo está en este repositorio. Para cerrarlos: `docker compose --profile demo stop`.
+
 ### Solo la API, sin Docker
 
 ```bash
@@ -88,7 +101,7 @@ explicaciones. El modelo (`artifacts/model.json`) viene en el repositorio.
 ## Pruebas
 
 ```bash
-pytest                                  # 95 unitarias y de integracion (CP-01 a CP-22)
+pytest                                  # 104 unitarias y de integracion (CP-01 a CP-22, CP-25)
 pytest --cov=src --cov-report=term      # con cobertura
 ruff check src tests load dashboard scripts
 
@@ -113,7 +126,7 @@ Los datos de la portada salen de `docs/informe/portada.local.json`, que no se
 versiona: sin ese archivo, la portada queda con `[COMPLETAR]` (ver el
 docstring del script).
 
-Son 24 casos (CP-01 a CP-23, más CP-20b) en 101 funciones; la tabla está en
+Son 25 casos (CP-01 a CP-23, CP-20b y CP-25) en 110 funciones; la tabla está en
 [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md#23-testing-y-calidad--ie10). Si hay un
 Redis en `REDIS_URL`, CP-20 compara además el feature store en Redis contra el
 de memoria. La CI (`.github/workflows/ci.yml`) corre ruff y pytest con Redis,
@@ -184,8 +197,8 @@ dashboard/             Consola de Fraud Ops (Streamlit)
 deploy/Caddyfile       Borde TLS 1.3 (el papel del ALB en la EP2)
 load/                  Locust y k6
 scripts/               Verificacion de seguridad del borde y generador del informe en PDF
-tests/                 24 casos de prueba, 101 funciones
-docs/                  RESULTADOS, EVIDENCIAS, RUBRICA, diagramas PlantUML, capturas e informe
+tests/                 25 casos de prueba, 110 funciones
+docs/                  RESULTADOS, EVIDENCIAS, RUBRICA, DEFENSA, AWS, diagramas, capturas e informe
 ```
 
 ---
